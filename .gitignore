@@ -1,2 +1,12 @@
 # Secret
 .env
+.air.toml
+
+#Excluded
+main.exe
+run.sh
+.gitignore
+docs/swagger.json
+docs/swagger.yaml
+docs/docs.go
+main
