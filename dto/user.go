@@ -21,6 +21,7 @@ type UserResponse struct {
 	Verified    bool   `json:"verified" example:"false"`
 	OnBoarded   bool   `json:"on_boarded" example:"false"`
 	Token       string `json:"token,omitempty" example:"token"`
+	CreatedAt   string `json:"created_at,omitempty" example:"2024-01-15T10:30:00Z"`
 }
 
 type UserResponseSwagger struct {

@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/buildyow/byow-user-service/constants"
+	appErrors "github.com/buildyow/byow-user-service/domain/errors"
 	"github.com/buildyow/byow-user-service/dto"
 	"github.com/buildyow/byow-user-service/lib"
 	"github.com/buildyow/byow-user-service/response"
@@ -53,11 +53,11 @@ func (h *CompanyHandler) FindAll(c *gin.Context) {
 
 	companies, rowCount, err := h.Usecase.GetAll(c, keyword, limit, offset)
 	if err != nil {
-		response.Error(c, http.StatusBadRequest, err.Error())
+		response.ErrorFromAppError(c, err)
 		return
 	}
 
-	response.SuccessWithPagination(c, http.StatusOK, companies, rowCount)
+	response.ListSuccess(c, "Companies", companies, rowCount)
 }
 
 // @Summary Create Company
@@ -83,7 +83,7 @@ func (h *CompanyHandler) Create(c *gin.Context) {
 
 	// Parse multipart form
 	if err := c.Request.ParseMultipartForm(10 << 20); err != nil {
-		response.Error(c, http.StatusBadRequest, constants.FAILED_PARSE_MULTIPART)
+		response.ErrorFromAppError(c, appErrors.ErrFailedParseMultipart)
 		return
 	}
 
@@ -101,10 +101,10 @@ func (h *CompanyHandler) Create(c *gin.Context) {
 	// Call to usecase or saving to DB
 	company, err := h.Usecase.Create(c, req)
 	if err != nil {
-		response.Error(c, http.StatusBadRequest, err.Error())
+		response.ErrorFromAppError(c, err)
 		return
 	}
-	response.Success(c, http.StatusOK, dto.CompanyResponse{
+	companyResponse := dto.CompanyResponse{
 		CompanyID:      company.ID,
 		CompanyName:    company.CompanyName,
 		CompanyEmail:   company.CompanyEmail,
@@ -113,7 +113,8 @@ func (h *CompanyHandler) Create(c *gin.Context) {
 		CompanyLogo:    company.CompanyLogo,
 		UserID:         company.UserID,
 		CreatedAt:      company.CreatedAt.Format(time.RFC3339),
-	})
+	}
+	response.CreateSuccess(c, "Company", companyResponse)
 }
 
 // @Summary Get Company By ID
@@ -129,16 +130,16 @@ func (h *CompanyHandler) FindByID(c *gin.Context) {
 	idParam := c.Param("id")
 	id, err := primitive.ObjectIDFromHex(idParam)
 	if err != nil {
-		response.Error(c, http.StatusBadRequest, constants.INVALID_ID)
+		response.ErrorFromAppError(c, appErrors.ErrInvalidId)
 		return
 	}
 
-	company, _ := h.Usecase.FindByID(id)
-	if company == nil {
-		response.Error(c, http.StatusNotFound, constants.ERR_NOT_FOUND)
+	company, err := h.Usecase.FindByID(id)
+	if err != nil {
+		response.ErrorFromAppError(c, err)
 		return
 	}
-	response.Success(c, http.StatusOK, dto.CompanyResponse{
+	companyResponse := dto.CompanyResponse{
 		CompanyID:      company.ID,
 		CompanyName:    company.CompanyName,
 		CompanyEmail:   company.CompanyEmail,
@@ -147,5 +148,6 @@ func (h *CompanyHandler) FindByID(c *gin.Context) {
 		CompanyLogo:    company.CompanyLogo,
 		UserID:         company.UserID,
 		CreatedAt:      company.CreatedAt.Format(time.RFC3339),
-	})
+	}
+	response.FetchSuccess(c, "Company", companyResponse)
 }

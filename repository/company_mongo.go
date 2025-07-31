@@ -2,10 +2,9 @@ package repository
 
 import (
 	"context"
-	"fmt"
 	"time"
 
-	"github.com/buildyow/byow-user-service/constants"
+	appErrors "github.com/buildyow/byow-user-service/domain/errors"
 	"github.com/buildyow/byow-user-service/domain/entity"
 	"github.com/buildyow/byow-user-service/domain/repository"
 	"go.mongodb.org/mongo-driver/bson"
@@ -73,19 +72,27 @@ func (r *companyMongoRepo) FindAll(userID string, keyword string, limit int64, o
 }
 
 func (r *companyMongoRepo) Create(company *entity.Company) error {
-	filter := bson.M{
-		"$or": []bson.M{
-			{"company_email": company.CompanyEmail},
-			{"company_phone": company.CompanyPhone},
-		},
+	// Build filter for duplicate check, only include non-empty fields
+	orConditions := []bson.M{}
+	
+	if company.CompanyEmail != "" {
+		orConditions = append(orConditions, bson.M{"company_email": company.CompanyEmail})
 	}
-
-	count, err := r.collection.CountDocuments(context.Background(), filter)
-	if err != nil {
-		return err
+	if company.CompanyPhone != "" {
+		orConditions = append(orConditions, bson.M{"company_phone": company.CompanyPhone})
 	}
-	if count > 0 {
-		return fmt.Errorf(constants.EMAIL_OR_PHONE_ALREADY_REGISTERED)
+	
+	// Only check for duplicates if we have fields to check
+	if len(orConditions) > 0 {
+		filter := bson.M{"$or": orConditions}
+		
+		count, err := r.collection.CountDocuments(context.Background(), filter)
+		if err != nil {
+			return err
+		}
+		if count > 0 {
+			return appErrors.ErrEmailOrPhoneAlreadyRegistered
+		}
 	}
 
 	company.CreatedAt = time.Now()
@@ -109,7 +116,7 @@ func (r *companyMongoRepo) FindByID(id primitive.ObjectID) (*entity.Company, err
 	err := r.collection.FindOne(ctx, filter).Decode(&company)
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
-			return nil, nil
+			return nil, appErrors.NewNotFoundError("Company")
 		}
 		return nil, err
 	}

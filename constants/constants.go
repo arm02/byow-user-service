@@ -5,47 +5,23 @@ const (
 	SUCCESS = "SUCCESS"
 	ERROR   = "ERROR"
 
-	// User
-	INVALID_CREDENTIALS      = "INVALID_CREDENTIALS"
-	INVALID_ORLD_PASSWORD    = "INVALID_OLD_PASSWORD"
+	// Success Messages (still used in responses)
 	LOGOUT_SUCCESSFUL        = "LOGOUT_SUCCESSFUL"
 	ONBOARD_SUCCESSFUL       = "ONBOARD_SUCCESSFUL"
 	PASSWORD_CHANGED_SUCCESS = "PASSWORD_CHANGED_SUCCESS"
-	USER_NOT_VERIFIED        = "USER_NOT_VERIFIED"
 	EMAIL_CHANGED_SUCCESS    = "EMAIL_CHANGED_SUCCESS"
 	PHONE_CHANGED_SUCCESS    = "PHONE_CHANGED_SUCCESS"
-
-	// TOKEN
+	OTP_VERIFIED             = "OTP_VERIFIED"
+	OTP_SENT                 = "OTP_SENT"
 	VALID_TOKEN              = "VALID_TOKEN"
-	ERR_INVALID_TOKEN        = "INVALID_TOKEN"
-	ERR_INVALID_TOKEN_CLAIMS = "INVALID_TOKEN_CLAIMS"
 
 	// Default values
 	DefaultPageSize = 20
 
-	//FORM
-	EMAIL_REQUIRED                    = "EMAIL_REQUIRED"
-	PHONE_REQUIRED                    = "PHONE_REQUIRED"
-	EMAIL_OTP_REQUIRED                = "EMAIL_OTP_REQUIRED"
-	ALL_FIELD_REQUIRED                = "ALL_FIELD_REQUIRED"
-	OTP_VERIFIED                      = "OTP_VERIFIED"
-	OTP_SENT                          = "OTP_SENT"
-	OTP_EXPIRED                       = "OTP_EXPIRED"
-	OTP_INVALID                       = "OTP_INVALID"
-	EMAIL_ALREADY_REGISTERED          = "EMAIL_ALREADY_REGISTERED"
-	PHONE_ALREADY_REGISTERED          = "PHONE_ALREADY_REGISTERED"
-	EMAIL_OR_PHONE_ALREADY_REGISTERED = "EMAIL_OR_PHONE_ALREADY_REGISTERED"
-
-	// Validation
-	FORGOT_PASSWORD        = "forgot_password"
-	VERIFICATION           = "verification"
-	EMAIL_CHANGED          = "email_changed"
-	PASSWORD_CHANGED       = "password_changed"
-	PHONE_CHANGED          = "phone_changed"
-	FAILED_PARSE_MULTIPART = "FAILED_PARSE_MULTIPART"
-	INVALID_ID             = "INVALID_ID"
-
-	// Error messages
-	ERR_NOT_FOUND    = "NOT_FOUND"
-	ERR_FETCH_FAILED = "FETCH_FAILED"
+	// OTP Types (still used for email sending)
+	FORGOT_PASSWORD  = "forgot_password"
+	VERIFICATION     = "verification"
+	EMAIL_CHANGED    = "email_changed"
+	PASSWORD_CHANGED = "password_changed"
+	PHONE_CHANGED    = "phone_changed"
 )

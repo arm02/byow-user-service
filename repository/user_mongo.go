@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	appErrors "github.com/buildyow/byow-user-service/domain/errors"
 	"github.com/buildyow/byow-user-service/domain/entity"
 	"github.com/buildyow/byow-user-service/domain/repository"
 	"go.mongodb.org/mongo-driver/bson"
@@ -16,7 +17,7 @@ type userMongoRepo struct {
 
 func NewUserMongoRepo(db *mongo.Database) repository.UserRepository {
 	return &userMongoRepo{
-		collection: db.Collection("user_collections"),
+		collection: db.Collection("users_collections"),
 	}
 }
 
@@ -29,13 +30,25 @@ func (r *userMongoRepo) Create(user *entity.User) error {
 func (r *userMongoRepo) FindByEmail(email string) (*entity.User, error) {
 	var user entity.User
 	err := r.collection.FindOne(context.Background(), bson.M{"email": email}).Decode(&user)
-	return &user, err
+	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			return nil, appErrors.ErrUserNotFound
+		}
+		return nil, err
+	}
+	return &user, nil
 }
 
 func (r *userMongoRepo) FindByPhone(phone string) (*entity.User, error) {
 	var user entity.User
 	err := r.collection.FindOne(context.Background(), bson.M{"phone_number": phone}).Decode(&user)
-	return &user, err
+	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			return nil, appErrors.ErrUserNotFound
+		}
+		return nil, err
+	}
+	return &user, nil
 }
 
 func (r *userMongoRepo) Update(user *entity.User) error {

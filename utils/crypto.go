@@ -3,9 +3,12 @@ package utils
 import (
 	"crypto/aes"
 	"crypto/cipher"
+	"crypto/rand"
 	"encoding/base64"
-	"errors"
+	"io"
 	"os"
+
+	appErrors "github.com/buildyow/byow-user-service/domain/errors"
 )
 
 func Encrypt(text string) (string, error) {
@@ -23,6 +26,9 @@ func Encrypt(text string) (string, error) {
 	}
 
 	nonce := make([]byte, aesGCM.NonceSize())
+	if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
+		return "", err
+	}
 	ciphertext := aesGCM.Seal(nonce, nonce, plaintext, nil)
 	return base64.StdEncoding.EncodeToString(ciphertext), nil
 }
@@ -46,7 +52,7 @@ func Decrypt(encrypted string) (string, error) {
 
 	nonceSize := aesGCM.NonceSize()
 	if len(data) < nonceSize {
-		return "", errors.New("invalid encrypted data")
+		return "", appErrors.ErrDecryptionFailed
 	}
 
 	nonce, ciphertext := data[:nonceSize], data[nonceSize:]

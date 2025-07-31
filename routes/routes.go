@@ -9,6 +9,7 @@ import (
 	"github.com/buildyow/byow-user-service/infrastructure/db"
 	"github.com/buildyow/byow-user-service/infrastructure/jwt"
 	loggerZap "github.com/buildyow/byow-user-service/infrastructure/logger"
+	"github.com/buildyow/byow-user-service/infrastructure/validation"
 	"github.com/buildyow/byow-user-service/repository"
 	"github.com/buildyow/byow-user-service/usecase"
 	"go.uber.org/zap"
@@ -33,7 +34,17 @@ func InitRoutes(r *gin.Engine) {
 	if err != nil {
 		panic(err)
 	}
-	userRepo := repository.NewUserMongoRepo(client.Database(os.Getenv("DB_NAME")))
+	database := client.Database(os.Getenv("DB_NAME"))
+	userRepo := repository.NewUserMongoRepo(database)
+
+	// Initialize database indexes
+	if err := db.CreateIndexes(database, logger); err != nil {
+		logger.Warn("Failed to create database indexes", zap.Error(err))
+	}
+
+	// Initialize JWT blacklist service  
+	blacklistService := jwt.NewBlacklistService(database, logger)
+	blacklistService.StartCleanupWorker()
 
 	// Usecase
 	userUC := &usecase.UserUsecase{
@@ -47,10 +58,16 @@ func InitRoutes(r *gin.Engine) {
 	userUC.EmailConfig.Pass = os.Getenv("EMAIL_PASS")
 
 	companyUC := &usecase.CompanyUsecase{
-		Repo: repository.NewCompanyMongoRepo(client.Database(os.Getenv("DB_NAME"))),
+		Repo: repository.NewCompanyMongoRepo(database),
 		UserID: func(c *gin.Context) string {
-			userID, _ := c.Get("user_id")
-			return userID.(string)
+			userID, exists := c.Get("user_id")
+			if !exists {
+				return ""
+			}
+			if userIDStr, ok := userID.(string); ok {
+				return userIDStr
+			}
+			return ""
 		},
 	}
 
@@ -61,8 +78,13 @@ func InitRoutes(r *gin.Engine) {
 	// Public Routes
 	auth := r.Group("/auth/users")
 	{
-		auth.POST("/register", userHandler.Register)
-		auth.POST("/login", userHandler.Login)
+		auth.POST("/register", 
+			validation.ValidateRegistrationRequest(),
+			validation.ValidateFileUpload(10<<20, []string{"image/jpeg", "image/png", "image/gif"}), // 10MB limit
+			userHandler.Register)
+		auth.POST("/login", 
+			validation.ValidateLoginRequest(),
+			userHandler.Login)
 		auth.POST("/change-password-otp", userHandler.ChangePasswordWithOTP)
 		auth.GET("/forgot-password/send-otp", userHandler.SendOTPForgotPassword)
 	}
@@ -75,7 +97,7 @@ func InitRoutes(r *gin.Engine) {
 
 	// Protected Routes
 	protected := r.Group("/api")
-	protected.Use(jwt.JWTMiddleware())
+	protected.Use(jwt.JWTMiddleware(blacklistService))
 	{
 		//USER
 		protected.GET("/users/me", userHandler.UserMe)
@@ -93,6 +115,15 @@ func InitRoutes(r *gin.Engine) {
 		protected.POST("/companies/create", companyHandler.Create)
 		protected.GET("/companies/:id", companyHandler.FindByID)
 	}
+
+	// Health Check
+	r.GET("/health", func(c *gin.Context) {
+		c.JSON(200, gin.H{
+			"status": "OK",
+			"message": "BYOW User Service is healthy",
+			"version": "1.0.0",
+		})
+	})
 
 	// Swagger
 	docs.SwaggerInfo.BasePath = "/"

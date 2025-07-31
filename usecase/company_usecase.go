@@ -1,11 +1,10 @@
 package usecase
 
 import (
-	"errors"
 	"time"
 
-	"github.com/buildyow/byow-user-service/constants"
 	"github.com/buildyow/byow-user-service/domain/entity"
+	appErrors "github.com/buildyow/byow-user-service/domain/errors"
 	"github.com/buildyow/byow-user-service/domain/repository"
 	"github.com/buildyow/byow-user-service/dto"
 	"github.com/gin-gonic/gin"
@@ -20,7 +19,7 @@ type CompanyUsecase struct {
 func (u *CompanyUsecase) GetAll(c *gin.Context, keyword string, limit int64, offset int64) (*[]dto.CompanyResponse, int64, error) {
 	companies, rowCount, err := u.Repo.FindAll(u.UserID(c), keyword, limit, offset)
 	if err != nil {
-		return nil, 0, errors.New(constants.ERR_NOT_FOUND)
+		return nil, 0, appErrors.NewNotFoundError("Companies")
 	}
 
 	var companyResponses []dto.CompanyResponse
@@ -61,7 +60,7 @@ func (u *CompanyUsecase) Create(c *gin.Context, req dto.CompanyRequest) (*entity
 func (u *CompanyUsecase) FindByID(id primitive.ObjectID) (*entity.Company, error) {
 	company, err := u.Repo.FindByID(id)
 	if err != nil {
-		return nil, errors.New(constants.ERR_FETCH_FAILED)
+		return nil, err
 	}
 	return company, nil
 }

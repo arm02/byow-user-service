@@ -2,8 +2,10 @@ package http
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/buildyow/byow-user-service/constants"
+	appErrors "github.com/buildyow/byow-user-service/domain/errors"
 	"github.com/buildyow/byow-user-service/dto"
 	"github.com/buildyow/byow-user-service/lib"
 	"github.com/buildyow/byow-user-service/response"
@@ -20,17 +22,18 @@ func NewUserHandler(uc *usecase.UserUsecase) *UserHandler {
 }
 
 // @Summary Register user
-// @Description Register a new user with avatar
+// @Description Register a new user with avatar. All fields are validated for security and format requirements.
 // @Tags Authentication
 // @Accept multipart/form-data
 // @Produce json
-// @Param full_name formData string true "Full name" example(John Doe)
-// @Param email formData string true "Email" example(john@example.com)
-// @Param password formData string true "Password" example(supersecret)
-// @Param phone_number formData string true "Phone number" example(628112123123)
-// @Param avatar formData file false "Avatar file"
+// @Param full_name formData string true "Full name (2-100 chars, letters/spaces/hyphens only)" example("John Doe")
+// @Param email formData string true "Valid email address" example("john@example.com")
+// @Param password formData string true "Strong password (8+ chars, mixed case, numbers, symbols)" example("SecurePass123!")
+// @Param phone_number formData string true "Valid phone number (E.164 format)" example("628112123123")
+// @Param avatar formData file false "Avatar image file (max 10MB, JPEG/PNG/GIF only)"
 // @Success 201 {object} dto.UserResponseSwagger
-// @Failure 400 {object} dto.ErrorResponse
+// @Failure 400 {object} dto.ValidationErrorResponse "Validation errors"
+// @Failure 409 {object} dto.ErrorResponse "Email or phone already exists"
 // @Router /auth/users/register [post]
 func (h *UserHandler) Register(c *gin.Context) {
 	var req dto.RegisterRequest
@@ -42,12 +45,12 @@ func (h *UserHandler) Register(c *gin.Context) {
 
 	err := h.Usecase.RegistrationValidation(c.PostForm("email"), c.PostForm("phone_number"))
 	if err != nil {
-		response.Error(c, http.StatusBadRequest, err.Error())
+		response.ErrorFromAppError(c, err)
 		return
 	}
 	// Parse multipart form
 	if err := c.Request.ParseMultipartForm(10 << 20); err != nil {
-		response.Error(c, http.StatusBadRequest, constants.FAILED_PARSE_MULTIPART)
+		response.ErrorFromAppError(c, appErrors.ErrFailedParseMultipart)
 		return
 	}
 
@@ -79,27 +82,48 @@ func (h *UserHandler) Register(c *gin.Context) {
 }
 
 // @Summary Login user
+// @Description User login with email and password. Credentials are validated for format and security.
 // @Tags Authentication
 // @Accept json
 // @Produce json
-// @Param user body dto.LoginRequest true "Email & Password"
-// @Success 201 {object} dto.UserResponseSwagger
-// @Failure 400 {object} dto.ErrorResponse
+// @Param user body dto.LoginRequest true "Login credentials"
+// @Success 200 {object} dto.UserResponseSwagger
+// @Failure 400 {object} dto.ValidationErrorResponse "Validation errors or invalid JSON format"
+// @Failure 401 {object} dto.ErrorResponse "Invalid credentials or unverified account"
+// @Failure 404 {object} dto.ErrorResponse "User not found"
 // @Router /auth/users/login [post]
 func (h *UserHandler) Login(c *gin.Context) {
-	var req dto.LoginRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		response.Error(c, http.StatusBadRequest, err.Error())
+	// Get validated data from middleware context
+	emailIface, exists := c.Get("validated_email")
+	if !exists {
+		response.Error(c, http.StatusInternalServerError, "Email validation failed")
 		return
 	}
-	user, err := h.Usecase.Login(req.Email, req.Password)
+	passwordIface, exists := c.Get("validated_password")
+	if !exists {
+		response.Error(c, http.StatusInternalServerError, "Password validation failed")
+		return
+	}
+	
+	email, ok := emailIface.(string)
+	if !ok {
+		response.Error(c, http.StatusInternalServerError, "Invalid email type")
+		return
+	}
+	password, ok := passwordIface.(string)
+	if !ok {
+		response.Error(c, http.StatusInternalServerError, "Invalid password type")
+		return
+	}
+	
+	user, err := h.Usecase.Login(email, password)
 	if err != nil {
-		response.Error(c, http.StatusUnauthorized, err.Error())
+		response.ErrorFromAppError(c, err)
 		return
 	}
 
 	// Set cookie
-	c.SetCookie("token", user.Token, 3600, "/", "", false, true)
+	c.SetCookie("token", user.Token, 3600, "/", "", true, true)
 
 	response.Success(c, http.StatusOK, dto.UserResponse{
 		Fullname:    user.Fullname,
@@ -120,7 +144,7 @@ func (h *UserHandler) Login(c *gin.Context) {
 // @Failure 400 {object} dto.ErrorResponse
 // @Router /api/users/logout [post]
 func (h *UserHandler) Logout(c *gin.Context) {
-	c.SetCookie("token", "", -1, "/", "", false, true)
+	c.SetCookie("token", "", -1, "/", "", true, true)
 	response.Success(c, http.StatusOK, constants.LOGOUT_SUCCESSFUL)
 }
 
@@ -134,15 +158,15 @@ func (h *UserHandler) Logout(c *gin.Context) {
 func (h *UserHandler) SendOTPVerification(c *gin.Context) {
 	email := c.Query("email")
 	if email == "" {
-		response.Error(c, http.StatusBadRequest, constants.EMAIL_REQUIRED)
+		response.ErrorFromAppError(c, appErrors.ErrEmailRequired)
 		return
 	}
 	err := h.Usecase.SendOTP(constants.VERIFICATION, email)
 	if err != nil {
-		response.Error(c, http.StatusBadRequest, err.Error())
+		response.ErrorFromAppError(c, err)
 		return
 	}
-	response.Success(c, http.StatusOK, constants.OTP_SENT)
+	response.OTPSentSuccess(c)
 }
 
 // @Summary Verify OTP
@@ -163,16 +187,16 @@ func (h *UserHandler) VerifyOTP(c *gin.Context) {
 	otp := req.OTP
 
 	if email == "" || otp == "" {
-		response.Error(c, http.StatusBadRequest, constants.EMAIL_OTP_REQUIRED)
+		response.ErrorFromAppError(c, appErrors.ErrEmailOtpRequired)
 		return
 	}
 
 	err := h.Usecase.VerifyOTP(email, otp)
 	if err != nil {
-		response.Error(c, http.StatusBadRequest, err.Error())
+		response.ErrorFromAppError(c, err)
 		return
 	}
-	response.Success(c, http.StatusOK, constants.OTP_VERIFIED)
+	response.OTPVerifiedSuccess(c)
 }
 
 // @Summary Check Logged Account
@@ -229,23 +253,23 @@ func (h *UserHandler) OnBoard(c *gin.Context) {
 func (h *UserHandler) ChangePasswordWithOTP(c *gin.Context) {
 	var req dto.ChangePasswordRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.Error(c, http.StatusBadRequest, err.Error())
+		response.ErrorFromAppError(c, appErrors.NewBadRequestError("Invalid JSON format"))
 		return
 	}
 	email := req.Email
 	otp := req.OTP
 
 	if email == "" || otp == "" {
-		response.Error(c, http.StatusBadRequest, constants.EMAIL_OTP_REQUIRED)
+		response.ErrorFromAppError(c, appErrors.ErrEmailOtpRequired)
 		return
 	}
 
 	err := h.Usecase.ChangePasswordWithOTP(req)
 	if err != nil {
-		response.Error(c, http.StatusBadRequest, err.Error())
+		response.ErrorFromAppError(c, err)
 		return
 	}
-	response.Success(c, http.StatusOK, constants.PASSWORD_CHANGED_SUCCESS)
+	response.PasswordChangeSuccess(c)
 }
 
 // @Summary Send OTP Forgot Password
@@ -258,15 +282,15 @@ func (h *UserHandler) ChangePasswordWithOTP(c *gin.Context) {
 func (h *UserHandler) SendOTPForgotPassword(c *gin.Context) {
 	email := c.Query("email")
 	if email == "" {
-		response.Error(c, http.StatusBadRequest, constants.EMAIL_REQUIRED)
+		response.ErrorFromAppError(c, appErrors.ErrEmailRequired)
 		return
 	}
 	err := h.Usecase.SendOTP(constants.FORGOT_PASSWORD, email)
 	if err != nil {
-		response.Error(c, http.StatusBadRequest, err.Error())
+		response.ErrorFromAppError(c, err)
 		return
 	}
-	response.Success(c, http.StatusOK, constants.OTP_SENT)
+	response.OTPSentSuccess(c)
 }
 
 // @Summary Update User
@@ -295,7 +319,7 @@ func (h *UserHandler) UpdateUser(c *gin.Context) {
 	}
 	// Parse multipart form
 	if err := c.Request.ParseMultipartForm(10 << 20); err != nil {
-		response.Error(c, http.StatusBadRequest, constants.FAILED_PARSE_MULTIPART)
+		response.ErrorFromAppError(c, appErrors.ErrFailedParseMultipart)
 		return
 	}
 
@@ -312,21 +336,21 @@ func (h *UserHandler) UpdateUser(c *gin.Context) {
 
 	// Call to usecase or saving to DB
 	user, err := h.Usecase.UpdateUser(req)
-	if req.AvatarUrl == "" {
-		req.AvatarUrl = user.AvatarUrl
-	}
 	if err != nil {
-		response.Error(c, http.StatusBadRequest, err.Error())
+		response.ErrorFromAppError(c, err)
 		return
 	}
-	response.Success(c, http.StatusOK, dto.UserResponse{
-		Fullname:    req.Fullname,
+	
+	userResponse := dto.UserResponse{
+		Fullname:    user.Fullname,
 		Email:       user.Email,
 		PhoneNumber: user.PhoneNumber,
-		AvatarUrl:   req.AvatarUrl,
+		AvatarUrl:   user.AvatarUrl,
 		OnBoarded:   user.OnBoarded,
 		Verified:    user.Verified,
-	})
+		CreatedAt:   user.CreatedAt.Format(time.RFC3339),
+	}
+	response.UpdateSuccess(c, "User", userResponse)
 }
 
 // @Summary Change Email With OTP
@@ -341,29 +365,31 @@ func (h *UserHandler) ChangeEmail(c *gin.Context) {
 	var req dto.ChangeEmailRequest
 	oldEmail, _ := c.Get("email")
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.Error(c, http.StatusBadRequest, err.Error())
+		response.ErrorFromAppError(c, appErrors.NewBadRequestError("Invalid JSON format"))
 		return
 	}
 	if req.OTP == "" || req.NewEmail == "" {
-		response.Error(c, http.StatusBadRequest, constants.EMAIL_OTP_REQUIRED)
+		response.ErrorFromAppError(c, appErrors.ErrEmailOtpRequired)
 		return
 	}
-	err := h.Usecase.UpdateUserByEmail(req, oldEmail.(string))
+	oldEmailStr, ok := oldEmail.(string)
+	if !ok {
+		response.Error(c, http.StatusInternalServerError, "Invalid email context")
+		return
+	}
+	err := h.Usecase.UpdateUserByEmail(req, oldEmailStr)
 	if err != nil {
-		response.Error(c, http.StatusBadRequest, err.Error())
+		response.ErrorFromAppError(c, err)
 		return
 	}
-	c.SetCookie("token", "", -1, "/", "", false, true) // REMOVE OLD TOKEN
+	c.SetCookie("token", "", -1, "/", "", true, true) // REMOVE OLD TOKEN
 	newLogged, err := h.Usecase.LoginWithoutPassword(req.NewEmail)
-	c.SetCookie("token", newLogged.Token, 3600, "/", "", false, true) // SET NEW TOKEN
 	if err != nil {
-		response.Error(c, http.StatusBadRequest, err.Error())
+		response.ErrorFromAppError(c, err)
 		return
 	}
-	response.Success(c, http.StatusOK, gin.H{
-		"message": constants.EMAIL_CHANGED_SUCCESS,
-		"data":    newLogged,
-	})
+	c.SetCookie("token", newLogged.Token, 3600, "/", "", true, true) // SET NEW TOKEN
+	response.EmailChangeSuccess(c)
 }
 
 // @Summary Send OTP Change Email
@@ -375,15 +401,20 @@ func (h *UserHandler) ChangeEmail(c *gin.Context) {
 func (h *UserHandler) SendOTPEmailChange(c *gin.Context) {
 	oldEmail, _ := c.Get("email")
 	if oldEmail == "" {
-		response.Error(c, http.StatusBadRequest, constants.EMAIL_REQUIRED)
+		response.ErrorFromAppError(c, appErrors.ErrEmailRequired)
 		return
 	}
-	err := h.Usecase.SendOTP(constants.EMAIL_CHANGED, oldEmail.(string))
+	oldEmailStr, ok := oldEmail.(string)
+	if !ok {
+		response.Error(c, http.StatusInternalServerError, "Invalid email context")
+		return
+	}
+	err := h.Usecase.SendOTP(constants.EMAIL_CHANGED, oldEmailStr)
 	if err != nil {
-		response.Error(c, http.StatusBadRequest, err.Error())
+		response.ErrorFromAppError(c, err)
 		return
 	}
-	response.Success(c, http.StatusOK, constants.OTP_SENT)
+	response.OTPSentSuccess(c)
 }
 
 // @Summary Change Phone With OTP Email
@@ -398,34 +429,41 @@ func (h *UserHandler) ChangePhone(c *gin.Context) {
 	oldPhone, _ := c.Get("phone")
 	email, _ := c.Get("email")
 	if oldPhone == "" {
-		response.Error(c, http.StatusBadRequest, constants.PHONE_REQUIRED)
+		response.ErrorFromAppError(c, appErrors.ErrPhoneRequired)
 		return
 	}
 	var req dto.ChangePhoneRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.Error(c, http.StatusBadRequest, err.Error())
+		response.ErrorFromAppError(c, appErrors.NewBadRequestError("Invalid JSON format"))
 		return
 	}
 	if req.OTP == "" || req.NewPhone == "" {
-		response.Error(c, http.StatusBadRequest, constants.EMAIL_OTP_REQUIRED)
+		response.ErrorFromAppError(c, appErrors.ErrEmailOtpRequired)
 		return
 	}
-	err := h.Usecase.UpdateUserByPhone(req, oldPhone.(string))
+	oldPhoneStr, ok := oldPhone.(string)
+	if !ok {
+		response.Error(c, http.StatusInternalServerError, "Invalid phone context")
+		return
+	}
+	err := h.Usecase.UpdateUserByPhone(req, oldPhoneStr)
 	if err != nil {
-		response.Error(c, http.StatusBadRequest, err.Error())
+		response.ErrorFromAppError(c, err)
 		return
 	}
-	c.SetCookie("token", "", -1, "/", "", false, true) // REMOVE OLD TOKEN
-	newLogged, err := h.Usecase.LoginWithoutPassword(email.(string))
-	c.SetCookie("token", newLogged.Token, 3600, "/", "", false, true) // SET NEW TOKEN
+	c.SetCookie("token", "", -1, "/", "", true, true) // REMOVE OLD TOKEN
+	emailStr, ok := email.(string)
+	if !ok {
+		response.Error(c, http.StatusInternalServerError, "Invalid email context")
+		return
+	}
+	newLogged, err := h.Usecase.LoginWithoutPassword(emailStr)
 	if err != nil {
-		response.Error(c, http.StatusBadRequest, err.Error())
+		response.ErrorFromAppError(c, err)
 		return
 	}
-	response.Success(c, http.StatusOK, gin.H{
-		"message": constants.PHONE_CHANGED_SUCCESS,
-		"data":    newLogged,
-	})
+	c.SetCookie("token", newLogged.Token, 3600, "/", "", true, true) // SET NEW TOKEN
+	response.PhoneChangeSuccess(c)
 }
 
 // @Summary Send OTP Change Email
@@ -437,15 +475,20 @@ func (h *UserHandler) ChangePhone(c *gin.Context) {
 func (h *UserHandler) SendOTPPhoneChange(c *gin.Context) {
 	oldEmail, _ := c.Get("email")
 	if oldEmail == "" {
-		response.Error(c, http.StatusBadRequest, constants.EMAIL_REQUIRED)
+		response.ErrorFromAppError(c, appErrors.ErrEmailRequired)
 		return
 	}
-	err := h.Usecase.SendOTP(constants.PHONE_CHANGED, oldEmail.(string))
+	oldEmailStr, ok := oldEmail.(string)
+	if !ok {
+		response.Error(c, http.StatusInternalServerError, "Invalid email context")
+		return
+	}
+	err := h.Usecase.SendOTP(constants.PHONE_CHANGED, oldEmailStr)
 	if err != nil {
-		response.Error(c, http.StatusBadRequest, err.Error())
+		response.ErrorFromAppError(c, err)
 		return
 	}
-	response.Success(c, http.StatusOK, constants.OTP_SENT)
+	response.OTPSentSuccess(c)
 }
 
 // @Summary Change Password With Old Password
@@ -459,24 +502,29 @@ func (h *UserHandler) SendOTPPhoneChange(c *gin.Context) {
 func (h *UserHandler) ChangePasswordWithOldPassword(c *gin.Context) {
 	email, _ := c.Get("email")
 	if email == "" {
-		response.Error(c, http.StatusBadRequest, constants.EMAIL_REQUIRED)
+		response.ErrorFromAppError(c, appErrors.ErrEmailRequired)
 		return
 	}
 	var req dto.ChangePasswordWithOldPasswordRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.Error(c, http.StatusBadRequest, err.Error())
+		response.ErrorFromAppError(c, appErrors.NewBadRequestError("Invalid JSON format"))
 		return
 	}
 
 	if req.OldPassword == "" || req.NewPassword == "" {
-		response.Error(c, http.StatusBadRequest, constants.ALL_FIELD_REQUIRED)
+		response.ErrorFromAppError(c, appErrors.ErrAllFieldsRequired)
 		return
 	}
 
-	err := h.Usecase.ChangePasswordWithOldPassword(email.(string), req)
-	if err != nil {
-		response.Error(c, http.StatusBadRequest, err.Error())
+	emailStr, ok := email.(string)
+	if !ok {
+		response.Error(c, http.StatusInternalServerError, "Invalid email context")
 		return
 	}
-	response.Success(c, http.StatusOK, constants.PASSWORD_CHANGED_SUCCESS)
+	err := h.Usecase.ChangePasswordWithOldPassword(emailStr, req)
+	if err != nil {
+		response.ErrorFromAppError(c, err)
+		return
+	}
+	response.PasswordChangeSuccess(c)
 }

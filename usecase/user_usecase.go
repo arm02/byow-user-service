@@ -1,17 +1,19 @@
 package usecase
 
 import (
-	"errors"
-	"math/rand"
+	"crypto/rand"
+	"math/big"
 	"strconv"
 	"time"
 
 	"github.com/buildyow/byow-user-service/constants"
 	"github.com/buildyow/byow-user-service/domain/entity"
+	appErrors "github.com/buildyow/byow-user-service/domain/errors"
 	"github.com/buildyow/byow-user-service/domain/repository"
 	"github.com/buildyow/byow-user-service/dto"
 	"github.com/buildyow/byow-user-service/infrastructure/jwt"
 	"github.com/buildyow/byow-user-service/infrastructure/mailer"
+	"github.com/buildyow/byow-user-service/infrastructure/validation"
 	"github.com/buildyow/byow-user-service/utils"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -31,11 +33,11 @@ type UserUsecase struct {
 func (u *UserUsecase) RegistrationValidation(email string, phone string) error {
 	_, errEmail := u.Repo.FindByEmail(email)
 	if errEmail == nil {
-		return errors.New(constants.EMAIL_ALREADY_REGISTERED)
+		return appErrors.ErrEmailAlreadyExists
 	}
 	_, errPhoneNumber := u.Repo.FindByPhone(phone)
 	if errPhoneNumber == nil {
-		return errors.New(constants.PHONE_ALREADY_REGISTERED)
+		return appErrors.ErrPhoneAlreadyExists
 	}
 	return nil
 }
@@ -43,7 +45,7 @@ func (u *UserUsecase) RegistrationValidation(email string, phone string) error {
 func (u *UserUsecase) UpdateUserValidation(email string) error {
 	_, errEmail := u.Repo.FindByEmail(email)
 	if errEmail != nil {
-		return errors.New(constants.ERR_NOT_FOUND)
+		return appErrors.ErrUserNotFound
 	}
 	return nil
 }
@@ -69,13 +71,13 @@ func (u *UserUsecase) Register(req dto.RegisterRequest) (*entity.User, error) {
 func (u *UserUsecase) Login(email, password string) (dto.UserResponse, error) {
 	user, err := u.Repo.FindByEmail(email)
 	if err != nil {
-		return dto.UserResponse{}, errors.New(constants.ERR_NOT_FOUND)
+		return dto.UserResponse{}, appErrors.ErrUserNotFound
 	}
 	if !user.Verified {
-		return dto.UserResponse{}, errors.New(constants.USER_NOT_VERIFIED)
+		return dto.UserResponse{}, appErrors.ErrUserNotVerified
 	}
 	if bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password)) != nil {
-		return dto.UserResponse{}, errors.New(constants.INVALID_CREDENTIALS)
+		return dto.UserResponse{}, appErrors.ErrInvalidCredentials
 	}
 
 	// Generate token
@@ -97,7 +99,7 @@ func (u *UserUsecase) Login(email, password string) (dto.UserResponse, error) {
 func (u *UserUsecase) LoginWithoutPassword(email string) (dto.UserResponse, error) {
 	user, err := u.Repo.FindByEmail(email)
 	if err != nil {
-		return dto.UserResponse{}, errors.New(constants.ERR_NOT_FOUND)
+		return dto.UserResponse{}, appErrors.ErrUserNotFound
 	}
 	// Generate token
 	token, err := jwt.GenerateToken(user.ID, user.Email, user.PhoneNumber, u.JWTSecret, u.JWTExpire)
@@ -120,7 +122,13 @@ func (u *UserUsecase) SendOTP(otpType, email string) error {
 	if err != nil {
 		return err
 	}
-	otp := strconv.Itoa(rand.Intn(900000) + 100000)
+	// Generate secure random OTP
+	max := big.NewInt(900000)
+	n, err := rand.Int(rand.Reader, max)
+	if err != nil {
+		return err
+	}
+	otp := strconv.Itoa(int(n.Int64()) + 100000)
 	encryptedOTP, err := utils.Encrypt(otp)
 	if err != nil {
 		return err
@@ -143,15 +151,15 @@ func (u *UserUsecase) SendOTP(otpType, email string) error {
 func (u *UserUsecase) VerifyOTP(email, otp string) error {
 	user, err := u.Repo.FindByEmail(email)
 	if err != nil {
-		return errors.New(constants.ERR_FETCH_FAILED)
+		return appErrors.ErrUserNotFound
 	}
 	if time.Now().After(user.OTPExpiresAt) {
-		return errors.New(constants.OTP_EXPIRED)
+		return appErrors.ErrExpiredOTP
 	}
 
 	decryptedOTP, err := utils.Decrypt(user.OTP)
 	if err != nil || decryptedOTP != otp {
-		return errors.New(constants.OTP_INVALID)
+		return appErrors.ErrInvalidOTP
 	}
 
 	user.Verified = true
@@ -175,20 +183,29 @@ func (u *UserUsecase) OnBoard(email string) error {
 }
 
 func (u *UserUsecase) ChangePasswordWithOTP(req dto.ChangePasswordRequest) error {
+	// Validate password strength first
+	if valid, message := validation.ValidatePassword(req.Password); !valid {
+		return appErrors.NewValidationError(message)
+	}
+
 	user, err := u.Repo.FindByEmail(req.Email)
 	if err != nil {
-		return errors.New(constants.ERR_FETCH_FAILED)
+		return appErrors.ErrUserNotFound
 	}
 	if time.Now().After(user.OTPExpiresAt) {
-		return errors.New(constants.OTP_EXPIRED)
+		return appErrors.ErrExpiredOTP
 	}
 
 	decryptedOTP, err := utils.Decrypt(user.OTP)
 	if err != nil || decryptedOTP != req.OTP {
-		return errors.New(constants.OTP_INVALID)
+		return appErrors.ErrInvalidOTP
 	}
 
-	hashed, _ := bcrypt.GenerateFromPassword([]byte(req.Password), 10)
+	hashed, err := bcrypt.GenerateFromPassword([]byte(req.Password), 12)
+	if err != nil {
+		return appErrors.NewInternalError("Failed to hash password")
+	}
+	
 	user.Password = string(hashed)
 	user.OTP = ""
 	user.OTPExpiresAt = time.Time{}
@@ -198,16 +215,25 @@ func (u *UserUsecase) ChangePasswordWithOTP(req dto.ChangePasswordRequest) error
 }
 
 func (u *UserUsecase) ChangePasswordWithOldPassword(email string, req dto.ChangePasswordWithOldPasswordRequest) error {
+	// Validate new password strength first
+	if valid, message := validation.ValidatePassword(req.NewPassword); !valid {
+		return appErrors.NewValidationError(message)
+	}
+
 	user, err := u.Repo.FindByEmail(email)
 	if err != nil {
-		return errors.New(constants.ERR_FETCH_FAILED)
+		return appErrors.ErrUserNotFound
 	}
 
 	if bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.OldPassword)) != nil {
-		return errors.New(constants.INVALID_ORLD_PASSWORD)
+		return appErrors.ErrInvalidOldPassword
 	}
 
-	hashed, _ := bcrypt.GenerateFromPassword([]byte(req.NewPassword), 10)
+	hashed, err := bcrypt.GenerateFromPassword([]byte(req.NewPassword), 12)
+	if err != nil {
+		return appErrors.NewInternalError("Failed to hash password")
+	}
+	
 	user.Password = string(hashed)
 
 	return u.Repo.Update(user)
@@ -216,21 +242,18 @@ func (u *UserUsecase) ChangePasswordWithOldPassword(email string, req dto.Change
 func (u *UserUsecase) UpdateUser(req dto.RegisterRequest) (*entity.User, error) {
 	user, err := u.Repo.FindByEmail(req.Email)
 	if err != nil {
-		return nil, errors.New(constants.ERR_FETCH_FAILED)
+		return nil, appErrors.ErrUserNotFound
 	}
 	if req.AvatarUrl == "" {
 		req.AvatarUrl = user.AvatarUrl
 	}
 	utils.LogWarn("Updating user with email:", req.Email, "and fullname:", req.Fullname)
-	err = u.Repo.Update(&entity.User{
-		Email:       user.Email,
-		Fullname:    req.Fullname,
-		PhoneNumber: user.PhoneNumber,
-		Password:    user.Password,
-		AvatarUrl:   req.AvatarUrl,
-		OnBoarded:   user.OnBoarded,
-		Verified:    user.Verified,
-	})
+	
+	// Update existing user object to preserve all fields including CreatedAt
+	user.Fullname = req.Fullname
+	user.AvatarUrl = req.AvatarUrl
+	
+	err = u.Repo.Update(user)
 	if err != nil {
 		return nil, err
 	}
@@ -240,29 +263,28 @@ func (u *UserUsecase) UpdateUser(req dto.RegisterRequest) (*entity.User, error) 
 func (u *UserUsecase) UpdateUserByEmail(req dto.ChangeEmailRequest, oldEmail string) error {
 	userOldEmail, err := u.Repo.FindByEmail(oldEmail)
 	if err != nil {
-		return errors.New(constants.ERR_FETCH_FAILED)
+		return appErrors.ErrUserNotFound
 	}
 	decryptedOTP, err := utils.Decrypt(userOldEmail.OTP)
 	if err != nil || decryptedOTP != req.OTP {
-		return errors.New(constants.OTP_INVALID)
+		return appErrors.ErrInvalidOTP
 	}
 	if time.Now().After(userOldEmail.OTPExpiresAt) {
-		return errors.New(constants.OTP_EXPIRED)
+		return appErrors.ErrExpiredOTP
 	}
 
 	_, err = u.Repo.FindByEmail(req.NewEmail)
 	if err == nil {
-		return errors.New(constants.EMAIL_ALREADY_REGISTERED)
+		return appErrors.ErrEmailAlreadyExists
 	}
-	err = u.Repo.UpdateEmail(&entity.User{
-		Email:       req.NewEmail,
-		Fullname:    userOldEmail.Fullname,
-		PhoneNumber: userOldEmail.PhoneNumber,
-		Password:    userOldEmail.Password,
-		AvatarUrl:   userOldEmail.AvatarUrl,
-		OnBoarded:   userOldEmail.OnBoarded,
-		Verified:    userOldEmail.Verified,
-	}, oldEmail)
+	
+	// Update existing user object to preserve all fields including CreatedAt
+	userOldEmail.Email = req.NewEmail
+	userOldEmail.OTP = ""
+	userOldEmail.OTPExpiresAt = time.Time{}
+	userOldEmail.OTPType = ""
+	
+	err = u.Repo.UpdateEmail(userOldEmail, oldEmail)
 	if err != nil {
 		return err
 	}
@@ -272,29 +294,28 @@ func (u *UserUsecase) UpdateUserByEmail(req dto.ChangeEmailRequest, oldEmail str
 func (u *UserUsecase) UpdateUserByPhone(req dto.ChangePhoneRequest, oldPhone string) error {
 	userOldPhone, err := u.Repo.FindByPhone(oldPhone)
 	if err != nil {
-		return errors.New(constants.ERR_FETCH_FAILED)
+		return appErrors.ErrUserNotFound
 	}
 	decryptedOTP, err := utils.Decrypt(userOldPhone.OTP)
 	if err != nil || decryptedOTP != req.OTP {
-		return errors.New(constants.OTP_INVALID)
+		return appErrors.ErrInvalidOTP
 	}
 	if time.Now().After(userOldPhone.OTPExpiresAt) {
-		return errors.New(constants.OTP_EXPIRED)
+		return appErrors.ErrExpiredOTP
 	}
 
 	_, err = u.Repo.FindByPhone(req.NewPhone)
 	if err == nil {
-		return errors.New(constants.PHONE_ALREADY_REGISTERED)
+		return appErrors.ErrPhoneAlreadyExists
 	}
-	err = u.Repo.UpdatePhone(&entity.User{
-		Email:       userOldPhone.Email,
-		Fullname:    userOldPhone.Fullname,
-		PhoneNumber: req.NewPhone,
-		Password:    userOldPhone.Password,
-		AvatarUrl:   userOldPhone.AvatarUrl,
-		OnBoarded:   userOldPhone.OnBoarded,
-		Verified:    userOldPhone.Verified,
-	}, oldPhone)
+	
+	// Update existing user object to preserve all fields including CreatedAt
+	userOldPhone.PhoneNumber = req.NewPhone
+	userOldPhone.OTP = ""
+	userOldPhone.OTPExpiresAt = time.Time{}
+	userOldPhone.OTPType = ""
+	
+	err = u.Repo.UpdatePhone(userOldPhone, oldPhone)
 	if err != nil {
 		return err
 	}

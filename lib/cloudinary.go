@@ -2,10 +2,10 @@ package lib
 
 import (
 	"context"
-	"fmt"
 	"mime/multipart"
 	"os"
 
+	appErrors "github.com/buildyow/byow-user-service/domain/errors"
 	"github.com/cloudinary/cloudinary-go/v2"
 	"github.com/cloudinary/cloudinary-go/v2/api/uploader"
 )
@@ -17,12 +17,12 @@ func CloudinaryUpload(file multipart.File) (string, error) {
 		os.Getenv("CLOUDINARY_API_SECRET"),
 	)
 	if err != nil {
-		return "", fmt.Errorf("failed to init cloudinary: %w", err)
+		return "", appErrors.WrapError(err, "Failed to initialize Cloudinary")
 	}
 
 	uploadResp, err := cld.Upload.Upload(context.Background(), file, uploader.UploadParams{})
 	if err != nil {
-		return "", fmt.Errorf("cloudinary upload error: %w", err)
+		return "", appErrors.ErrCloudinaryUploadFailed
 	}
 
 	return uploadResp.SecureURL, nil
