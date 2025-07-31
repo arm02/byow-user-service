@@ -168,10 +168,16 @@ docker run -d -p 27017:27017 --name mongodb mongo:latest
 # The application will automatically create indexes on startup
 ```
 
-### 4. Run the Application
+### 4. Run & Testing the Application
 ```bash
 # Development mode
 go run cmd/main.go
+
+# On Command
+go test -v -coverprofile=coverage.out ./... && go tool cover -func=coverage.out
+
+# HTML Output
+go tool cover -html=coverage.out
 
 # Production build
 go build -o byow-user-service cmd/main.go

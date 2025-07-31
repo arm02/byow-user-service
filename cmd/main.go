@@ -17,14 +17,34 @@ import (
 	"github.com/joho/godotenv"
 )
 
-func main() {
-	_ = godotenv.Load()
-
+// setupServer creates and configures the Gin router
+func setupServer() *gin.Engine {
 	r := gin.Default()
 	r.Use(corsService.SetupCors())
 	routes.InitRoutes(r)
+	return r
+}
 
+// getPort returns the port from environment variable, with fallback to "8080"
+func getPort() string {
 	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
+	return port
+}
+
+// loadEnv loads the .env file, ignoring errors
+func loadEnv() {
+	_ = godotenv.Load()
+}
+
+func main() {
+	loadEnv()
+
+	r := setupServer()
+	port := getPort()
+	
 	log.Println("Running on port", port)
 	log.Fatal(r.Run(":" + port))
 }

@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
@@ -12,6 +13,10 @@ import (
 
 // CreateIndexes creates necessary database indexes for optimal performance
 func CreateIndexes(db *mongo.Database, logger *zap.Logger) error {
+	if db == nil {
+		return fmt.Errorf("database is nil")
+	}
+	
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
@@ -135,6 +140,10 @@ func CreateIndexes(db *mongo.Database, logger *zap.Logger) error {
 
 // DropIndexes drops all custom indexes (useful for testing or migration)
 func DropIndexes(db *mongo.Database, logger *zap.Logger) error {
+	if db == nil {
+		return fmt.Errorf("database is nil")
+	}
+	
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
@@ -170,6 +179,10 @@ func DropIndexes(db *mongo.Database, logger *zap.Logger) error {
 
 // CheckIndexes verifies that all required indexes exist
 func CheckIndexes(db *mongo.Database, logger *zap.Logger) error {
+	if db == nil {
+		return fmt.Errorf("database is nil")
+	}
+	
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
@@ -266,6 +279,10 @@ func CheckIndexes(db *mongo.Database, logger *zap.Logger) error {
 
 // RebuildCompanyIndexes rebuilds company indexes with proper sparse options
 func RebuildCompanyIndexes(db *mongo.Database, logger *zap.Logger) error {
+	if db == nil {
+		return fmt.Errorf("database is nil")
+	}
+	
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
