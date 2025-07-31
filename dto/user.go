@@ -34,6 +34,11 @@ type ChangePasswordRequest struct {
 	Password string `json:"password" example:"newpassword"`
 }
 
+type ChangePasswordWithOldPasswordRequest struct {
+	OldPassword string `json:"old_password" example:"oldpassword"`
+	NewPassword string `json:"new_password" example:"newpassword"`
+}
+
 type ChangeEmailRequest struct {
 	NewEmail string `json:"new_email" example:"john.doe@example.com"`
 	OTP      string `json:"otp" example:"000000"`

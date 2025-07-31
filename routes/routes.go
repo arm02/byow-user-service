@@ -76,6 +76,7 @@ func InitRoutes(r *gin.Engine) {
 		protected.GET("/users/change-email/send-otp", userHandler.SendOTPEmailChange)
 		protected.POST("/users/change-phone", userHandler.ChangePhone)
 		protected.GET("/users/change-phone/send-otp", userHandler.SendOTPPhoneChange)
+		protected.POST("/users/change-password-old", userHandler.ChangePasswordWithOldPassword)
 	}
 
 	// Swagger

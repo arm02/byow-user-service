@@ -445,3 +445,36 @@ func (h *UserHandler) SendOTPPhoneChange(c *gin.Context) {
 	}
 	response.Success(c, http.StatusOK, constants.OTP_SENT)
 }
+
+// @Summary Change Password With Old Password
+// @Tags Users
+// @Description Change user password using old password
+// @Produce plain
+// @Param otp body dto.ChangePasswordWithOldPasswordRequest true "Email, Old Password & New Password"
+// @Success 200 {object} dto.SuccessResponse
+// @Failure 400 {object} dto.ErrorResponse
+// @Router /api/users/change-password-old [post]
+func (h *UserHandler) ChangePasswordWithOldPassword(c *gin.Context) {
+	email, _ := c.Get("email")
+	if email == "" {
+		response.Error(c, http.StatusBadRequest, constants.EMAIL_REQUIRED)
+		return
+	}
+	var req dto.ChangePasswordWithOldPasswordRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	if req.OldPassword == "" || req.NewPassword == "" {
+		response.Error(c, http.StatusBadRequest, constants.ALL_FIELD_REQUIRED)
+		return
+	}
+
+	err := h.Usecase.ChangePasswordWithOldPassword(email.(string), req)
+	if err != nil {
+		response.Error(c, http.StatusBadRequest, err.Error())
+		return
+	}
+	response.Success(c, http.StatusOK, constants.PASSWORD_CHANGED_SUCCESS)
+}

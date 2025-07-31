@@ -197,6 +197,22 @@ func (u *UserUsecase) ChangePasswordWithOTP(req dto.ChangePasswordRequest) error
 	return u.Repo.Update(user)
 }
 
+func (u *UserUsecase) ChangePasswordWithOldPassword(email string, req dto.ChangePasswordWithOldPasswordRequest) error {
+	user, err := u.Repo.FindByEmail(email)
+	if err != nil {
+		return errors.New(constants.ERR_FETCH_FAILED)
+	}
+
+	if bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.OldPassword)) != nil {
+		return errors.New(constants.INVALID_ORLD_PASSWORD)
+	}
+
+	hashed, _ := bcrypt.GenerateFromPassword([]byte(req.NewPassword), 10)
+	user.Password = string(hashed)
+
+	return u.Repo.Update(user)
+}
+
 func (u *UserUsecase) UpdateUser(req dto.RegisterRequest) (*entity.User, error) {
 	user, err := u.Repo.FindByEmail(req.Email)
 	if err != nil {
