@@ -38,6 +38,10 @@ func JWTMiddleware() gin.HandlerFunc {
 
 		// Get Email Claims
 		if claims, ok := token.Claims.(jwt.MapClaims); ok {
+			if userId, ok := claims["user_id"].(string); ok {
+				// Set ID to Context
+				c.Set("user_id", userId)
+			}
 			if email, ok := claims["email"].(string); ok {
 				// Set Email to Context
 				c.Set("email", email)

@@ -23,6 +23,12 @@ type UserResponse struct {
 	Token       string `json:"token,omitempty" example:"token"`
 }
 
+type UserResponseSwagger struct {
+	Status string       `json:"status" example:"SUCCESS"`
+	Code   int          `json:"code" example:"200"`
+	Data   UserResponse `json:"data"`
+}
+
 type VerifyOTPRequest struct {
 	Email string `json:"email" example:"john@example.com"`
 	OTP   string `json:"otp" example:"000000"`

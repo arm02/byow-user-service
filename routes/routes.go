@@ -46,8 +46,17 @@ func InitRoutes(r *gin.Engine) {
 	userUC.EmailConfig.User = os.Getenv("EMAIL_USER")
 	userUC.EmailConfig.Pass = os.Getenv("EMAIL_PASS")
 
+	companyUC := &usecase.CompanyUsecase{
+		Repo: repository.NewCompanyMongoRepo(client.Database(os.Getenv("DB_NAME"))),
+		UserID: func(c *gin.Context) string {
+			userID, _ := c.Get("user_id")
+			return userID.(string)
+		},
+	}
+
 	// Handler
 	userHandler := http.NewUserHandler(userUC)
+	companyHandler := http.NewCompanyHandler(companyUC)
 
 	// Public Routes
 	auth := r.Group("/auth/users")
@@ -68,6 +77,7 @@ func InitRoutes(r *gin.Engine) {
 	protected := r.Group("/api")
 	protected.Use(jwt.JWTMiddleware())
 	{
+		//USER
 		protected.GET("/users/me", userHandler.UserMe)
 		protected.GET("/users/onboard", userHandler.OnBoard)
 		protected.POST("/users/update", userHandler.UpdateUser)
@@ -77,6 +87,11 @@ func InitRoutes(r *gin.Engine) {
 		protected.POST("/users/change-phone", userHandler.ChangePhone)
 		protected.GET("/users/change-phone/send-otp", userHandler.SendOTPPhoneChange)
 		protected.POST("/users/change-password-old", userHandler.ChangePasswordWithOldPassword)
+
+		//COMPANIES
+		protected.GET("/companies/all", companyHandler.FindAll)
+		protected.POST("/companies/create", companyHandler.Create)
+		protected.GET("/companies/:id", companyHandler.FindByID)
 	}
 
 	// Swagger

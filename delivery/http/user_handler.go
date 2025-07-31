@@ -28,8 +28,8 @@ func NewUserHandler(uc *usecase.UserUsecase) *UserHandler {
 // @Param email formData string true "Email" example(john@example.com)
 // @Param password formData string true "Password" example(supersecret)
 // @Param phone_number formData string true "Phone number" example(628112123123)
-// @Param avatar formData file true "Avatar file"
-// @Success 201 {object} dto.SuccessResponse
+// @Param avatar formData file false "Avatar file"
+// @Success 201 {object} dto.UserResponseSwagger
 // @Failure 400 {object} dto.ErrorResponse
 // @Router /auth/users/register [post]
 func (h *UserHandler) Register(c *gin.Context) {
@@ -83,7 +83,7 @@ func (h *UserHandler) Register(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param user body dto.LoginRequest true "Email & Password"
-// @Success 201 {object} dto.SuccessResponse
+// @Success 201 {object} dto.UserResponseSwagger
 // @Failure 400 {object} dto.ErrorResponse
 // @Router /auth/users/login [post]
 func (h *UserHandler) Login(c *gin.Context) {
@@ -179,17 +179,19 @@ func (h *UserHandler) VerifyOTP(c *gin.Context) {
 // @Tags Users
 // @Description Check if user is logged in and return user info
 // @Produce plain
-// @Success 200 {object} dto.SuccessResponse
+// @Success 200 {object} dto.UserResponseSwagger
 // @Failure 400 {object} dto.ErrorResponse
 // @Router /api/users/me [get]
 func (h *UserHandler) UserMe(c *gin.Context) {
 	email, _ := c.Get("email")
+	userID, _ := c.Get("user_id")
 	phone, _ := c.Get("phone")
 	response.Success(c, http.StatusOK, gin.H{
 		"message": constants.VALID_TOKEN,
 		"user": map[string]interface{}{
-			"email": email,
-			"phone": phone,
+			"user_id": userID,
+			"email":   email,
+			"phone":   phone,
 		},
 	})
 }
@@ -275,7 +277,7 @@ func (h *UserHandler) SendOTPForgotPassword(c *gin.Context) {
 // @Param full_name formData string true "Full name" example(John Doe)
 // @Param email formData string true "Email" example(john@example.com)
 // @Param avatar formData file false "Avatar file"
-// @Success 201 {object} dto.SuccessResponse
+// @Success 201 {object} dto.UserResponseSwagger
 // @Failure 400 {object} dto.ErrorResponse
 // @Router /api/users/update [post]
 func (h *UserHandler) UpdateUser(c *gin.Context) {

@@ -79,7 +79,7 @@ func (u *UserUsecase) Login(email, password string) (dto.UserResponse, error) {
 	}
 
 	// Generate token
-	token, err := jwt.GenerateToken(user.Email, user.PhoneNumber, u.JWTSecret, u.JWTExpire)
+	token, err := jwt.GenerateToken(user.ID, user.Email, user.PhoneNumber, u.JWTSecret, u.JWTExpire)
 	if err != nil {
 		return dto.UserResponse{}, err
 	}
@@ -100,7 +100,7 @@ func (u *UserUsecase) LoginWithoutPassword(email string) (dto.UserResponse, erro
 		return dto.UserResponse{}, errors.New(constants.ERR_NOT_FOUND)
 	}
 	// Generate token
-	token, err := jwt.GenerateToken(user.Email, user.PhoneNumber, u.JWTSecret, u.JWTExpire)
+	token, err := jwt.GenerateToken(user.ID, user.Email, user.PhoneNumber, u.JWTSecret, u.JWTExpire)
 	if err != nil {
 		return dto.UserResponse{}, err
 	}

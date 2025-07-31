@@ -6,7 +6,6 @@ import (
 
 	"github.com/buildyow/byow-user-service/domain/entity"
 	"github.com/buildyow/byow-user-service/domain/repository"
-	"github.com/buildyow/byow-user-service/utils"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 )
@@ -17,7 +16,7 @@ type userMongoRepo struct {
 
 func NewUserMongoRepo(db *mongo.Database) repository.UserRepository {
 	return &userMongoRepo{
-		collection: db.Collection("user-collections"),
+		collection: db.Collection("user_collections"),
 	}
 }
 
@@ -40,8 +39,6 @@ func (r *userMongoRepo) FindByPhone(phone string) (*entity.User, error) {
 }
 
 func (r *userMongoRepo) Update(user *entity.User) error {
-
-	utils.LogError("Changing email from:", user)
 	updateData, err := bson.Marshal(user)
 	if err != nil {
 		return err
