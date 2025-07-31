@@ -1,0 +1,709 @@
+basePath: /
+definitions:
+  dto.ChangeEmailRequest:
+    properties:
+      new_email:
+        example: john.doe@example.com
+        type: string
+      otp:
+        example: "000000"
+        type: string
+    type: object
+  dto.ChangePasswordRequest:
+    properties:
+      email:
+        example: john@example.com
+        type: string
+      otp:
+        example: "000000"
+        type: string
+      password:
+        example: newpassword
+        type: string
+    type: object
+  dto.ChangePasswordWithOldPasswordRequest:
+    properties:
+      new_password:
+        example: newpassword
+        type: string
+      old_password:
+        example: oldpassword
+        type: string
+    type: object
+  dto.ChangePhoneRequest:
+    properties:
+      new_phone:
+        example: "628112123123"
+        type: string
+      otp:
+        example: "000000"
+        type: string
+    type: object
+  dto.CompanyListResponseSwagger:
+    properties:
+      code:
+        example: 200
+        type: integer
+      data:
+        items:
+          $ref: '#/definitions/dto.CompanyResponse'
+        type: array
+      status:
+        example: SUCCESS
+        type: string
+    type: object
+  dto.CompanyRequestSwagger:
+    properties:
+      code:
+        example: 200
+        type: integer
+      data:
+        $ref: '#/definitions/dto.CompanyResponse'
+      status:
+        example: SUCCESS
+        type: string
+    type: object
+  dto.CompanyResponse:
+    properties:
+      company_address:
+        example: 123 BuildYow St, Tech City
+        type: string
+      company_email:
+        example: info@buildyow.com
+        type: string
+      company_id:
+        example: 60c72b2f9b1e8c001c8e4d3a
+        type: string
+      company_logo:
+        example: https://assets/images/company_logo.jpg
+        type: string
+      company_name:
+        example: BuildYow
+        type: string
+      company_phone:
+        example: "628112123123"
+        type: string
+      created_at:
+        example: "2023-10-01T12:00:00Z"
+        type: string
+      user_id:
+        example: 60c72b2f9b1e8c001c8e4d3a
+        type: string
+      verified:
+        example: false
+        type: boolean
+    type: object
+  dto.ErrorDetail:
+    properties:
+      code:
+        example: VALIDATION_ERROR
+        type: string
+      details: {}
+      message:
+        example: Validation failed
+        type: string
+    type: object
+  dto.ErrorResponse:
+    properties:
+      code:
+        example: 400
+        type: integer
+      data:
+        $ref: '#/definitions/dto.ErrorResponseData'
+      error:
+        $ref: '#/definitions/dto.ErrorDetail'
+      status:
+        example: ERROR
+        type: string
+    type: object
+  dto.ErrorResponseData:
+    properties:
+      message:
+        example: INTERNAL_SERVER_ERROR
+        type: string
+    type: object
+  dto.LoginRequest:
+    properties:
+      email:
+        example: arm.adrian02@gmail.com
+        type: string
+      password:
+        example: masukaja123
+        type: string
+    type: object
+  dto.SuccessResponse:
+    properties:
+      code:
+        example: 200
+        type: integer
+      data: {}
+      status:
+        example: SUCCESS
+        type: string
+    type: object
+  dto.UserResponse:
+    properties:
+      avatar_url:
+        example: https://assets/images/img.jpg
+        type: string
+      created_at:
+        example: "2024-01-15T10:30:00Z"
+        type: string
+      email:
+        example: john@example.com
+        type: string
+      full_name:
+        example: John Doe
+        type: string
+      on_boarded:
+        example: false
+        type: boolean
+      phone_number:
+        example: "628112123123"
+        type: string
+      token:
+        example: token
+        type: string
+      verified:
+        example: false
+        type: boolean
+    type: object
+  dto.UserResponseSwagger:
+    properties:
+      code:
+        example: 200
+        type: integer
+      data:
+        $ref: '#/definitions/dto.UserResponse'
+      status:
+        example: SUCCESS
+        type: string
+    type: object
+  dto.ValidationError:
+    properties:
+      field:
+        example: email
+        type: string
+      message:
+        example: Invalid email format
+        type: string
+    type: object
+  dto.ValidationErrorDetail:
+    properties:
+      code:
+        example: VALIDATION_ERROR
+        type: string
+      details:
+        items:
+          $ref: '#/definitions/dto.ValidationError'
+        type: array
+      message:
+        example: Validation failed
+        type: string
+    type: object
+  dto.ValidationErrorResponse:
+    properties:
+      code:
+        example: 400
+        type: integer
+      error:
+        $ref: '#/definitions/dto.ValidationErrorDetail'
+      status:
+        example: ERROR
+        type: string
+    type: object
+  dto.VerifyOTPRequest:
+    properties:
+      email:
+        example: john@example.com
+        type: string
+      otp:
+        example: "000000"
+        type: string
+    type: object
+host: localhost:8080
+info:
+  contact: {}
+  description: This is the user service for the Byow app
+  title: Build Your Own Website User Service API
+  version: "1.0"
+paths:
+  /api/companies/{id}:
+    get:
+      consumes:
+      - application/json
+      description: Get company details by ID
+      parameters:
+      - description: Company ID
+        example: '"60d5ec49f1c2b14c88f3c5e5"'
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.CompanyRequestSwagger'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: Get Company By ID
+      tags:
+      - Companies
+  /api/companies/all:
+    get:
+      parameters:
+      - description: Keyword
+        in: query
+        name: keyword
+        type: string
+      - description: Limit
+        in: query
+        name: limit
+        type: string
+      - description: Offset
+        in: query
+        name: offset
+        type: string
+      produces:
+      - text/plain
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.CompanyListResponseSwagger'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: Find All Companies
+      tags:
+      - Companies
+  /api/companies/create:
+    post:
+      consumes:
+      - application/json
+      description: Register a new company
+      parameters:
+      - description: Company Name
+        example: Cemerlang Jaya
+        in: formData
+        name: company_name
+        required: true
+        type: string
+      - description: Company Email
+        example: '"john@company.com"'
+        in: formData
+        name: company_email
+        required: true
+        type: string
+      - description: Company Phone
+        example: "628112123123"
+        in: formData
+        name: company_phone
+        required: true
+        type: string
+      - description: Company Address
+        example: '"123 Cemerlang St, Tech City"'
+        in: formData
+        name: company_address
+        required: true
+        type: string
+      - description: Company Logo
+        in: formData
+        name: company_logo
+        type: file
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/dto.CompanyRequestSwagger'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: Create Company
+      tags:
+      - Companies
+  /api/users/change-email:
+    post:
+      description: Change user email using OTP verification
+      parameters:
+      - description: OTP & New Email
+        in: body
+        name: otp
+        required: true
+        schema:
+          $ref: '#/definitions/dto.ChangeEmailRequest'
+      produces:
+      - text/plain
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: Change Email With OTP
+      tags:
+      - Users
+  /api/users/change-email/send-otp:
+    get:
+      produces:
+      - text/plain
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: Send OTP Change Email
+      tags:
+      - Users
+  /api/users/change-password-old:
+    post:
+      description: Change user password using old password
+      parameters:
+      - description: Email, Old Password & New Password
+        in: body
+        name: otp
+        required: true
+        schema:
+          $ref: '#/definitions/dto.ChangePasswordWithOldPasswordRequest'
+      produces:
+      - text/plain
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: Change Password With Old Password
+      tags:
+      - Users
+  /api/users/change-phone:
+    post:
+      description: Change user phone using OTP verification
+      parameters:
+      - description: OTP & New Email
+        in: body
+        name: otp
+        required: true
+        schema:
+          $ref: '#/definitions/dto.ChangePhoneRequest'
+      produces:
+      - text/plain
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: Change Phone With OTP Email
+      tags:
+      - Users
+  /api/users/change-phone/send-otp:
+    get:
+      produces:
+      - text/plain
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: Send OTP Change Email
+      tags:
+      - Users
+  /api/users/logout:
+    post:
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/dto.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: Logout user
+      tags:
+      - Users
+  /api/users/me:
+    get:
+      description: Check if user is logged in and return user info
+      produces:
+      - text/plain
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.UserResponseSwagger'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: Check Logged Account
+      tags:
+      - Users
+  /api/users/onboard:
+    get:
+      description: Onboard user to the system
+      produces:
+      - text/plain
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: Onboarded User
+      tags:
+      - Users
+  /api/users/update:
+    post:
+      consumes:
+      - application/json
+      description: Update user information
+      parameters:
+      - description: Full name
+        example: John Doe
+        in: formData
+        name: full_name
+        required: true
+        type: string
+      - description: Email
+        example: john@example.com
+        in: formData
+        name: email
+        required: true
+        type: string
+      - description: Avatar file
+        in: formData
+        name: avatar
+        type: file
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/dto.UserResponseSwagger'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: Update User
+      tags:
+      - Users
+  /auth/users/change-password-otp:
+    post:
+      description: Change user password using OTP verification
+      parameters:
+      - description: Email, OTP & New Password
+        in: body
+        name: otp
+        required: true
+        schema:
+          $ref: '#/definitions/dto.ChangePasswordRequest'
+      produces:
+      - text/plain
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: Change Password With OTP
+      tags:
+      - Authentication
+  /auth/users/forgot-password/send-otp:
+    get:
+      parameters:
+      - description: Email address
+        in: query
+        name: email
+        required: true
+        type: string
+      produces:
+      - text/plain
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: Send OTP Forgot Password
+      tags:
+      - Authentication
+  /auth/users/login:
+    post:
+      consumes:
+      - application/json
+      description: User login with email and password. Credentials are validated for
+        format and security.
+      parameters:
+      - description: Login credentials
+        in: body
+        name: user
+        required: true
+        schema:
+          $ref: '#/definitions/dto.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.UserResponseSwagger'
+        "400":
+          description: Validation errors or invalid JSON format
+          schema:
+            $ref: '#/definitions/dto.ValidationErrorResponse'
+        "401":
+          description: Invalid credentials or unverified account
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: User not found
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: Login user
+      tags:
+      - Authentication
+  /auth/users/register:
+    post:
+      consumes:
+      - multipart/form-data
+      description: Register a new user with avatar. All fields are validated for security
+        and format requirements.
+      parameters:
+      - description: Full name (2-100 chars, letters/spaces/hyphens only)
+        example: '"John Doe"'
+        in: formData
+        name: full_name
+        required: true
+        type: string
+      - description: Valid email address
+        example: '"john@example.com"'
+        in: formData
+        name: email
+        required: true
+        type: string
+      - description: Strong password (8+ chars, mixed case, numbers, symbols)
+        example: '"SecurePass123!"'
+        in: formData
+        name: password
+        required: true
+        type: string
+      - description: Valid phone number (E.164 format)
+        example: '"628112123123"'
+        in: formData
+        name: phone_number
+        required: true
+        type: string
+      - description: Avatar image file (max 10MB, JPEG/PNG/GIF only)
+        in: formData
+        name: avatar
+        type: file
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/dto.UserResponseSwagger'
+        "400":
+          description: Validation errors
+          schema:
+            $ref: '#/definitions/dto.ValidationErrorResponse'
+        "409":
+          description: Email or phone already exists
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: Register user
+      tags:
+      - Authentication
+  /verification/users/send-otp:
+    get:
+      parameters:
+      - description: Email address
+        in: query
+        name: email
+        required: true
+        type: string
+      produces:
+      - text/plain
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: Send OTP Verification
+      tags:
+      - Verification
+  /verification/users/verify-otp:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Email & OTP
+        in: body
+        name: otp
+        required: true
+        schema:
+          $ref: '#/definitions/dto.VerifyOTPRequest'
+      produces:
+      - text/plain
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: Verify OTP
+      tags:
+      - Verification
+schemes:
+- http
+swagger: "2.0"

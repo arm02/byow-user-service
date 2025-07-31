@@ -12,10 +12,6 @@ main.exe
 .air.toml
 run.sh
 
-# Generated documentation
-docs/swagger.json
-docs/swagger.yaml
-docs/docs.go
 
 # Temporary files
 tmp/
