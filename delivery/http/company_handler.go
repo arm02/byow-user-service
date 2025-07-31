@@ -81,11 +81,6 @@ func (h *CompanyHandler) Create(c *gin.Context) {
 	req.CompanyPhone = c.PostForm("company_phone")
 	req.CompanyAddress = c.PostForm("company_address")
 
-	// err := h.Usecase.RegistrationValidation(c.PostForm("email"), c.PostForm("phone_number"))
-	// if err != nil {
-	// 	response.Error(c, http.StatusBadRequest, err.Error())
-	// 	return
-	// }
 	// Parse multipart form
 	if err := c.Request.ParseMultipartForm(10 << 20); err != nil {
 		response.Error(c, http.StatusBadRequest, constants.FAILED_PARSE_MULTIPART)
