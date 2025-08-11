@@ -2,22 +2,26 @@ package repository
 
 import (
 	"context"
+	"encoding/json"
 	"time"
 
-	appErrors "github.com/buildyow/byow-user-service/domain/errors"
 	"github.com/buildyow/byow-user-service/domain/entity"
+	appErrors "github.com/buildyow/byow-user-service/domain/errors"
 	"github.com/buildyow/byow-user-service/domain/repository"
+	"github.com/rabbitmq/amqp091-go"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
 type userMongoRepo struct {
 	collection *mongo.Collection
+	ch         *amqp091.Channel
 }
 
-func NewUserMongoRepo(db *mongo.Database) repository.UserRepository {
+func NewUserMongoRepo(db *mongo.Database, ch *amqp091.Channel) repository.UserRepository {
 	return &userMongoRepo{
 		collection: db.Collection("users_collections"),
+		ch:         ch,
 	}
 }
 
@@ -160,4 +164,25 @@ func (r *userMongoRepo) UpdatePhone(user *entity.User, oldPhone string) error {
 	)
 
 	return err
+}
+
+func (r *userMongoRepo) PublishOTP(otpData interface{}) error {
+	body, err := json.Marshal(otpData)
+	if err != nil {
+		return err
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	return r.ch.PublishWithContext(ctx,
+		"",
+		"otp_email_queue",
+		false,
+		false,
+		amqp091.Publishing{
+			ContentType: "application/json",
+			Body:        body,
+		},
+	)
 }

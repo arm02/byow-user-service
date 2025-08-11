@@ -2,6 +2,7 @@ package mailer
 
 import (
 	"fmt"
+	"log"
 
 	"github.com/buildyow/byow-user-service/constants"
 	"gopkg.in/gomail.v2"
@@ -15,7 +16,12 @@ func SendOTP(email, otp, host, user, pass string, port int, otpType string) erro
 	m.SetBody("text/plain", fmt.Sprintf("Your OTP for %s is: %s expired in %d minutes", otpType, otp, getOTPLifetime(otpType)))
 
 	d := gomail.NewDialer(host, port, user, pass)
-	return d.DialAndSend(m)
+	err := d.DialAndSend(m)
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+	return nil
 }
 
 func getOTPLifetime(otpType string) int {

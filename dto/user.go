@@ -2,7 +2,7 @@ package dto
 
 type LoginRequest struct {
 	Email    string `json:"email" example:"arm.adrian02@gmail.com"`
-	Password string `json:"password" example:"masukaja123"`
+	Password string `json:"password" example:"Masukaja123$"`
 }
 
 type RegisterRequest struct {

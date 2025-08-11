@@ -9,4 +9,5 @@ type UserRepository interface {
 	Update(user *entity.User) error
 	UpdateEmail(user *entity.User, oldEmail string) error
 	UpdatePhone(user *entity.User, oldPhone string) error
+	PublishOTP(otpData interface{}) error
 }

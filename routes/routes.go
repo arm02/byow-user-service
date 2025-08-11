@@ -1,10 +1,12 @@
 package routes
 
 import (
+	"log"
 	"os"
 	"strconv"
 
 	"github.com/buildyow/byow-user-service/delivery/http"
+	"github.com/buildyow/byow-user-service/delivery/queue"
 	"github.com/buildyow/byow-user-service/docs"
 	"github.com/buildyow/byow-user-service/infrastructure/db"
 	"github.com/buildyow/byow-user-service/infrastructure/jwt"
@@ -12,6 +14,7 @@ import (
 	"github.com/buildyow/byow-user-service/infrastructure/validation"
 	"github.com/buildyow/byow-user-service/repository"
 	"github.com/buildyow/byow-user-service/usecase"
+	"github.com/rabbitmq/amqp091-go"
 	"go.uber.org/zap"
 
 	ginzap "github.com/gin-contrib/zap"
@@ -20,7 +23,7 @@ import (
 	ginSwagger "github.com/swaggo/gin-swagger"
 )
 
-func InitRoutes(r *gin.Engine) {
+func InitRoutes(r *gin.Engine, conn *amqp091.Connection, ch *amqp091.Channel) {
 	logger, err := zap.NewProduction()
 	if err != nil {
 		panic("failed to initialize zap logger: " + err.Error())
@@ -35,14 +38,14 @@ func InitRoutes(r *gin.Engine) {
 		panic(err)
 	}
 	database := client.Database(os.Getenv("DB_NAME"))
-	userRepo := repository.NewUserMongoRepo(database)
+	userRepo := repository.NewUserMongoRepo(database, ch)
 
 	// Initialize database indexes
 	if err := db.CreateIndexes(database, logger); err != nil {
 		logger.Warn("Failed to create database indexes", zap.Error(err))
 	}
 
-	// Initialize JWT blacklist service  
+	// Initialize JWT blacklist service
 	blacklistService := jwt.NewBlacklistService(database, logger)
 	blacklistService.StartCleanupWorker()
 
@@ -51,11 +54,28 @@ func InitRoutes(r *gin.Engine) {
 		Repo:      userRepo,
 		JWTSecret: os.Getenv("JWT_SECRET"),
 	}
+
 	userUC.JWTExpire, _ = strconv.Atoi(os.Getenv("JWT_EXPIRE"))
 	userUC.EmailConfig.Host = os.Getenv("EMAIL_HOST")
 	userUC.EmailConfig.Port, _ = strconv.Atoi(os.Getenv("EMAIL_PORT"))
 	userUC.EmailConfig.User = os.Getenv("EMAIL_USER")
 	userUC.EmailConfig.Pass = os.Getenv("EMAIL_PASS")
+
+	//Consume RabbitMq
+	consumer := queue.NewOTPConsumer(*userUC)
+	msgs, err := ch.Consume(
+		"otp_email_queue",
+		"",
+		true,
+		false,
+		false,
+		false,
+		nil,
+	)
+	if err != nil {
+		log.Fatalf("Failed to consume: %v", err)
+	}
+	go consumer.ConsumeOTP(msgs)
 
 	companyUC := &usecase.CompanyUsecase{
 		Repo: repository.NewCompanyMongoRepo(database),
@@ -78,11 +98,11 @@ func InitRoutes(r *gin.Engine) {
 	// Public Routes
 	auth := r.Group("/auth/users")
 	{
-		auth.POST("/register", 
+		auth.POST("/register",
 			validation.ValidateRegistrationRequest(),
 			validation.ValidateFileUpload(10<<20, []string{"image/jpeg", "image/png", "image/gif"}), // 10MB limit
 			userHandler.Register)
-		auth.POST("/login", 
+		auth.POST("/login",
 			validation.ValidateLoginRequest(),
 			userHandler.Login)
 		auth.POST("/change-password-otp", userHandler.ChangePasswordWithOTP)
@@ -114,12 +134,14 @@ func InitRoutes(r *gin.Engine) {
 		protected.GET("/companies/all", companyHandler.FindAll)
 		protected.POST("/companies/create", companyHandler.Create)
 		protected.GET("/companies/:id", companyHandler.FindByID)
+		protected.PUT("/companies/:id", companyHandler.Update)
+		protected.DELETE("/companies/:id", companyHandler.DeleteById)
 	}
 
 	// Health Check
 	r.GET("/health", func(c *gin.Context) {
 		c.JSON(200, gin.H{
-			"status": "OK",
+			"status":  "OK",
 			"message": "BYOW User Service is healthy",
 			"version": "1.0.0",
 		})

@@ -11,6 +11,6 @@ type CompanyRepository interface {
 	FindByID(id primitive.ObjectID) (*entity.Company, error)
 	FindByEmail(email string) (*entity.Company, error)
 	FindByPhone(phone string) (*entity.Company, error)
-	Update(user *entity.Company) error
+	Update(idCompany primitive.ObjectID, user *entity.Company) error
 	Delete(id primitive.ObjectID) error
 }

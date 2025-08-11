@@ -57,10 +57,56 @@ func (u *CompanyUsecase) Create(c *gin.Context, req dto.CompanyRequest) (*entity
 	return company, nil
 }
 
+func (u *CompanyUsecase) Update(c *gin.Context, idCompany primitive.ObjectID, req dto.CompanyRequest) (*entity.Company, error) {
+	company, err := u.Repo.FindByID(idCompany)
+	if err != nil {
+		return nil, err
+	}
+	if req.CompanyName != "" {
+		company.CompanyName = req.CompanyName
+	}
+	if req.CompanyEmail != "" {
+		company.CompanyEmail = req.CompanyEmail
+	}
+	if req.CompanyAddress != "" {
+		company.CompanyAddress = req.CompanyAddress
+	}
+	if req.CompanyPhone != "" {
+		company.CompanyPhone = req.CompanyPhone
+	}
+	if req.CompanyLogo != "" {
+		company.CompanyLogo = req.CompanyLogo
+	}
+	err = u.Repo.Update(idCompany, company)
+	if err != nil {
+		return nil, err
+	}
+	updatedCompany, err := u.Repo.FindByID(idCompany)
+	if err != nil {
+		return nil, err
+	}
+	return updatedCompany, nil
+}
+
 func (u *CompanyUsecase) FindByID(id primitive.ObjectID) (*entity.Company, error) {
 	company, err := u.Repo.FindByID(id)
 	if err != nil {
 		return nil, err
 	}
 	return company, nil
+}
+
+func (u *CompanyUsecase) Delete(id primitive.ObjectID) error {
+	company, err := u.Repo.FindByID(id)
+	if err != nil {
+		return err
+	}
+	if company.CompanyEmail != "" {
+		err := u.Repo.Delete(id)
+		if err != nil {
+			return err
+		}
+
+	}
+	return nil
 }

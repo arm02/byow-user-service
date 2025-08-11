@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"crypto/rand"
+	"log"
 	"math/big"
 	"strconv"
 	"time"
@@ -122,6 +123,7 @@ func (u *UserUsecase) SendOTP(otpType, email string) error {
 	if err != nil {
 		return err
 	}
+	log.Println("Calling Sent OTP", user)
 	// Generate secure random OTP
 	max := big.NewInt(900000)
 	n, err := rand.Int(rand.Reader, max)
@@ -146,6 +148,14 @@ func (u *UserUsecase) SendOTP(otpType, email string) error {
 		return err
 	}
 	return mailer.SendOTP(email, otp, u.EmailConfig.Host, u.EmailConfig.User, u.EmailConfig.Pass, u.EmailConfig.Port, otpType)
+}
+
+func (u *UserUsecase) RequestOTP(otpType, email string) error {
+	msg := map[string]string{
+		"email":   email,
+		"otpType": otpType,
+	}
+	return u.Repo.PublishOTP(msg)
 }
 
 func (u *UserUsecase) VerifyOTP(email, otp string) error {
@@ -205,7 +215,7 @@ func (u *UserUsecase) ChangePasswordWithOTP(req dto.ChangePasswordRequest) error
 	if err != nil {
 		return appErrors.NewInternalError("Failed to hash password")
 	}
-	
+
 	user.Password = string(hashed)
 	user.OTP = ""
 	user.OTPExpiresAt = time.Time{}
@@ -233,7 +243,7 @@ func (u *UserUsecase) ChangePasswordWithOldPassword(email string, req dto.Change
 	if err != nil {
 		return appErrors.NewInternalError("Failed to hash password")
 	}
-	
+
 	user.Password = string(hashed)
 
 	return u.Repo.Update(user)
@@ -247,12 +257,11 @@ func (u *UserUsecase) UpdateUser(req dto.RegisterRequest) (*entity.User, error) 
 	if req.AvatarUrl == "" {
 		req.AvatarUrl = user.AvatarUrl
 	}
-	utils.LogWarn("Updating user with email:", req.Email, "and fullname:", req.Fullname)
-	
+
 	// Update existing user object to preserve all fields including CreatedAt
 	user.Fullname = req.Fullname
 	user.AvatarUrl = req.AvatarUrl
-	
+
 	err = u.Repo.Update(user)
 	if err != nil {
 		return nil, err
@@ -277,13 +286,13 @@ func (u *UserUsecase) UpdateUserByEmail(req dto.ChangeEmailRequest, oldEmail str
 	if err == nil {
 		return appErrors.ErrEmailAlreadyExists
 	}
-	
+
 	// Update existing user object to preserve all fields including CreatedAt
 	userOldEmail.Email = req.NewEmail
 	userOldEmail.OTP = ""
 	userOldEmail.OTPExpiresAt = time.Time{}
 	userOldEmail.OTPType = ""
-	
+
 	err = u.Repo.UpdateEmail(userOldEmail, oldEmail)
 	if err != nil {
 		return err
@@ -308,13 +317,13 @@ func (u *UserUsecase) UpdateUserByPhone(req dto.ChangePhoneRequest, oldPhone str
 	if err == nil {
 		return appErrors.ErrPhoneAlreadyExists
 	}
-	
+
 	// Update existing user object to preserve all fields including CreatedAt
 	userOldPhone.PhoneNumber = req.NewPhone
 	userOldPhone.OTP = ""
 	userOldPhone.OTPExpiresAt = time.Time{}
 	userOldPhone.OTPType = ""
-	
+
 	err = u.Repo.UpdatePhone(userOldPhone, oldPhone)
 	if err != nil {
 		return err

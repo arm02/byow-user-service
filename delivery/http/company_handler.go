@@ -151,3 +151,92 @@ func (h *CompanyHandler) FindByID(c *gin.Context) {
 	}
 	response.FetchSuccess(c, "Company", companyResponse)
 }
+
+// @Summary Update Company
+// @Description Update a company
+// @Tags Companies
+// @Accept json
+// @Produce json
+// @Param id path string true "Company ID" example("60d5ec49f1c2b14c88f3c5e5")
+// @Param company_name formData string false "Company Name" example(Cemerlang Jaya)
+// @Param company_email formData string false "Company Email" example("john@company.com")
+// @Param company_phone formData string false "Company Phone" example(628112123123)
+// @Param company_address formData string false "Company Address" example("123 Cemerlang St, Tech City")
+// @Param company_logo formData file false "Company Logo"
+// @Success 201 {object} dto.CompanyRequestSwagger
+// @Failure 400 {object} dto.ErrorResponse
+// @Router /api/companies/{id} [put]
+func (h *CompanyHandler) Update(c *gin.Context) {
+	idParam := c.Param("id")
+	id, err := primitive.ObjectIDFromHex(idParam)
+	if err != nil {
+		response.ErrorFromAppError(c, appErrors.ErrInvalidId)
+		return
+	}
+	var req dto.CompanyRequest
+	// Bind form values to struct
+	req.CompanyName = c.PostForm("company_name")
+	req.CompanyEmail = c.PostForm("company_email")
+	req.CompanyPhone = c.PostForm("company_phone")
+	req.CompanyAddress = c.PostForm("company_address")
+
+	// Parse multipart form
+	if err := c.Request.ParseMultipartForm(10 << 20); err != nil {
+		response.ErrorFromAppError(c, appErrors.ErrFailedParseMultipart)
+		return
+	}
+
+	// Upload File
+	file, _, err := c.Request.FormFile("company_logo")
+	if err == nil {
+		companyLogoUrl, err := lib.CloudinaryUpload(file)
+		if err != nil {
+			response.Error(c, http.StatusBadRequest, err.Error())
+			return
+		}
+		req.CompanyLogo = companyLogoUrl
+	}
+
+	// Call to usecase or saving to DB
+	company, err := h.Usecase.Update(c, id, req)
+	if err != nil {
+		response.ErrorFromAppError(c, err)
+		return
+	}
+	companyResponse := dto.CompanyResponse{
+		CompanyID:      company.ID,
+		CompanyName:    company.CompanyName,
+		CompanyEmail:   company.CompanyEmail,
+		CompanyPhone:   company.CompanyPhone,
+		CompanyAddress: company.CompanyAddress,
+		CompanyLogo:    company.CompanyLogo,
+		UserID:         company.UserID,
+		CreatedAt:      company.CreatedAt.Format(time.RFC3339),
+	}
+	response.UpdateSuccess(c, "Company", companyResponse)
+}
+
+// @Summary Delete Company
+// @Description Delete Company by ID
+// @Tags Companies
+// @Accept json
+// @Produce json
+// @Param id path string true "Company ID" example("60d5ec49f1c2b14c88f3c5e5")
+// @Success 200 {object} dto.CompanyRequestSwagger
+// @Failure 400 {object} dto.ErrorResponse
+// @Router /api/companies/{id} [delete]
+func (h *CompanyHandler) DeleteById(c *gin.Context) {
+	idParam := c.Param("id")
+	id, err := primitive.ObjectIDFromHex(idParam)
+	if err != nil {
+		response.ErrorFromAppError(c, appErrors.ErrInvalidId)
+		return
+	}
+
+	err = h.Usecase.Delete(id)
+	if err != nil {
+		response.ErrorFromAppError(c, err)
+		return
+	}
+	response.DeleteSuccess(c, "Company")
+}

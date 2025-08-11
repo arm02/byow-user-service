@@ -4,8 +4,8 @@ import (
 	"context"
 	"time"
 
-	appErrors "github.com/buildyow/byow-user-service/domain/errors"
 	"github.com/buildyow/byow-user-service/domain/entity"
+	appErrors "github.com/buildyow/byow-user-service/domain/errors"
 	"github.com/buildyow/byow-user-service/domain/repository"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -74,18 +74,18 @@ func (r *companyMongoRepo) FindAll(userID string, keyword string, limit int64, o
 func (r *companyMongoRepo) Create(company *entity.Company) error {
 	// Build filter for duplicate check, only include non-empty fields
 	orConditions := []bson.M{}
-	
+
 	if company.CompanyEmail != "" {
 		orConditions = append(orConditions, bson.M{"company_email": company.CompanyEmail})
 	}
 	if company.CompanyPhone != "" {
 		orConditions = append(orConditions, bson.M{"company_phone": company.CompanyPhone})
 	}
-	
+
 	// Only check for duplicates if we have fields to check
 	if len(orConditions) > 0 {
 		filter := bson.M{"$or": orConditions}
-		
+
 		count, err := r.collection.CountDocuments(context.Background(), filter)
 		if err != nil {
 			return err
@@ -136,10 +136,10 @@ func (r *companyMongoRepo) FindByPhone(phone string) (*entity.Company, error) {
 	return &company, err
 }
 
-func (r *companyMongoRepo) Update(company *entity.Company) error {
+func (r *companyMongoRepo) Update(idCompany primitive.ObjectID, company *entity.Company) error {
 	_, err := r.collection.UpdateOne(
 		context.Background(),
-		bson.M{"id": company.ID},
+		bson.M{"_id": idCompany},
 		bson.M{"$set": company},
 	)
 

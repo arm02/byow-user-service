@@ -10,8 +10,11 @@ package main
 import (
 	"log"
 	"os"
+	"os/signal"
+	"syscall"
 
 	corsService "github.com/buildyow/byow-user-service/infrastructure/cors"
+	"github.com/buildyow/byow-user-service/infrastructure/rabbitmq"
 	"github.com/buildyow/byow-user-service/routes"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
@@ -20,8 +23,20 @@ import (
 // setupServer creates and configures the Gin router
 func setupServer() *gin.Engine {
 	r := gin.Default()
+	conn, ch := rabbitmq.Connect("amqp://guest:guest@localhost:5672/")
 	r.Use(corsService.SetupCors())
-	routes.InitRoutes(r)
+	routes.InitRoutes(r, conn, ch)
+	// Graceful shutdown
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	go func() {
+		<-quit
+		log.Println("Closing RabbitMQ connection...")
+		ch.Close()
+		conn.Close()
+		os.Exit(0)
+	}()
+
 	return r
 }
 
@@ -44,7 +59,7 @@ func main() {
 
 	r := setupServer()
 	port := getPort()
-	
+
 	log.Println("Running on port", port)
 	log.Fatal(r.Run(":" + port))
 }

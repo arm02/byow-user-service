@@ -104,7 +104,7 @@ func (h *UserHandler) Login(c *gin.Context) {
 		response.Error(c, http.StatusInternalServerError, "Password validation failed")
 		return
 	}
-	
+
 	email, ok := emailIface.(string)
 	if !ok {
 		response.Error(c, http.StatusInternalServerError, "Invalid email type")
@@ -115,7 +115,7 @@ func (h *UserHandler) Login(c *gin.Context) {
 		response.Error(c, http.StatusInternalServerError, "Invalid password type")
 		return
 	}
-	
+
 	user, err := h.Usecase.Login(email, password)
 	if err != nil {
 		response.ErrorFromAppError(c, err)
@@ -161,7 +161,7 @@ func (h *UserHandler) SendOTPVerification(c *gin.Context) {
 		response.ErrorFromAppError(c, appErrors.ErrEmailRequired)
 		return
 	}
-	err := h.Usecase.SendOTP(constants.VERIFICATION, email)
+	err := h.Usecase.RequestOTP(constants.VERIFICATION, email)
 	if err != nil {
 		response.ErrorFromAppError(c, err)
 		return
@@ -340,7 +340,7 @@ func (h *UserHandler) UpdateUser(c *gin.Context) {
 		response.ErrorFromAppError(c, err)
 		return
 	}
-	
+
 	userResponse := dto.UserResponse{
 		Fullname:    user.Fullname,
 		Email:       user.Email,

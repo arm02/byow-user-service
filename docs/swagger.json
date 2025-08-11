@@ -163,6 +163,114 @@
                         }
                     }
                 }
+            },
+            "put": {
+                "description": "Update a company",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Companies"
+                ],
+                "summary": "Update Company",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "example": "\"60d5ec49f1c2b14c88f3c5e5\"",
+                        "description": "Company ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "example": "Cemerlang Jaya",
+                        "description": "Company Name",
+                        "name": "company_name",
+                        "in": "formData"
+                    },
+                    {
+                        "type": "string",
+                        "example": "\"john@company.com\"",
+                        "description": "Company Email",
+                        "name": "company_email",
+                        "in": "formData"
+                    },
+                    {
+                        "type": "string",
+                        "example": "628112123123",
+                        "description": "Company Phone",
+                        "name": "company_phone",
+                        "in": "formData"
+                    },
+                    {
+                        "type": "string",
+                        "example": "\"123 Cemerlang St, Tech City\"",
+                        "description": "Company Address",
+                        "name": "company_address",
+                        "in": "formData"
+                    },
+                    {
+                        "type": "file",
+                        "description": "Company Logo",
+                        "name": "company_logo",
+                        "in": "formData"
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/dto.CompanyRequestSwagger"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Delete Company by ID",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Companies"
+                ],
+                "summary": "Delete Company",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "example": "\"60d5ec49f1c2b14c88f3c5e5\"",
+                        "description": "Company ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.CompanyRequestSwagger"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
             }
         },
         "/api/users/change-email": {
@@ -915,7 +1023,7 @@
                 },
                 "password": {
                     "type": "string",
-                    "example": "masukaja123"
+                    "example": "Masukaja123$"
                 }
             }
         },
