@@ -165,6 +165,20 @@ func (m *mockCompanyRepository) Delete(id primitive.ObjectID) error {
 	return appErrors.NewNotFoundError("Company")
 }
 
+// Implement FindByIDAndUserID for interface compatibility
+func (m *mockCompanyRepository) FindByIDAndUserID(id primitive.ObjectID, userID string) (*entity.Company, error) {
+	if m.companies == nil {
+		return nil, appErrors.NewNotFoundError("Company")
+	}
+
+	key := id.Hex()
+	if company, exists := m.companies[key]; exists && company.UserID == userID {
+		return company, nil
+	}
+
+	return nil, appErrors.NewNotFoundError("Company")
+}
+
 // Mock function to extract user ID from context
 func mockUserIDFunc(c *gin.Context) string {
 	if userID, exists := c.Get("user_id"); exists {

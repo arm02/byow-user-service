@@ -14,14 +14,15 @@ type RegisterRequest struct {
 }
 
 type UserResponse struct {
-	Fullname    string `json:"full_name" example:"John Doe"`
-	Email       string `json:"email" example:"john@example.com"`
-	PhoneNumber string `json:"phone_number" example:"628112123123"`
-	AvatarUrl   string `json:"avatar_url" example:"https://assets/images/img.jpg"`
-	Verified    bool   `json:"verified" example:"false"`
-	OnBoarded   bool   `json:"on_boarded" example:"false"`
-	Token       string `json:"token,omitempty" example:"token"`
-	CreatedAt   string `json:"created_at,omitempty" example:"2024-01-15T10:30:00Z"`
+	Fullname        string `json:"full_name" example:"John Doe"`
+	Email           string `json:"email" example:"john@example.com"`
+	PhoneNumber     string `json:"phone_number" example:"628112123123"`
+	AvatarUrl       string `json:"avatar_url" example:"https://assets/images/img.jpg"`
+	Verified        bool   `json:"verified" example:"false"`
+	OnBoarded       bool   `json:"on_boarded" example:"false"`
+	Token           string `json:"token,omitempty" example:"token"`
+	SelectedCompany string `json:"selected_company,omitempty" example:"id"`
+	CreatedAt       string `json:"created_at,omitempty" example:"2024-01-15T10:30:00Z"`
 }
 
 type UserResponseSwagger struct {
@@ -54,4 +55,10 @@ type ChangeEmailRequest struct {
 type ChangePhoneRequest struct {
 	NewPhone string `json:"new_phone" example:"628112123123"`
 	OTP      string `json:"otp" example:"000000"`
+}
+
+type UserMeResponse struct {
+	Message string      `json:"message"`
+	User    interface{} `json:"user"`
+	Company interface{} `json:"company"`
 }

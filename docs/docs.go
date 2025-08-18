@@ -517,6 +517,42 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/users/set-company/{company_id}": {
+            "get": {
+                "description": "Change company ID for user",
+                "produces": [
+                    "text/plain"
+                ],
+                "tags": [
+                    "Users"
+                ],
+                "summary": "Set Company ID",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "example": "\"60d5ec49f1c2b14c88f3c5e5\"",
+                        "description": "Company ID",
+                        "name": "company_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/users/update": {
             "post": {
                 "description": "Update user information",
@@ -1070,6 +1106,10 @@ const docTemplate = `{
                 "phone_number": {
                     "type": "string",
                     "example": "628112123123"
+                },
+                "selected_company": {
+                    "type": "string",
+                    "example": "id"
                 },
                 "token": {
                     "type": "string",

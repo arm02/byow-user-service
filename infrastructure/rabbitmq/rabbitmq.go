@@ -28,5 +28,6 @@ func Connect(url string) (*amqp091.Connection, *amqp091.Channel) {
 	if err != nil {
 		log.Fatalf("Failed to declare queue: %v", err)
 	}
+	log.Println("Rabbit MQ Connected")
 	return conn, ch
 }

@@ -11,14 +11,16 @@ import (
 	"github.com/buildyow/byow-user-service/response"
 	"github.com/buildyow/byow-user-service/usecase"
 	"github.com/gin-gonic/gin"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 type UserHandler struct {
-	Usecase *usecase.UserUsecase
+	Usecase        *usecase.UserUsecase
+	CompanyUsecase *usecase.CompanyUsecase
 }
 
-func NewUserHandler(uc *usecase.UserUsecase) *UserHandler {
-	return &UserHandler{Usecase: uc}
+func NewUserHandler(uc *usecase.UserUsecase, cu *usecase.CompanyUsecase) *UserHandler {
+	return &UserHandler{Usecase: uc, CompanyUsecase: cu}
 }
 
 // @Summary Register user
@@ -208,15 +210,44 @@ func (h *UserHandler) VerifyOTP(c *gin.Context) {
 // @Router /api/users/me [get]
 func (h *UserHandler) UserMe(c *gin.Context) {
 	email, _ := c.Get("email")
-	userID, _ := c.Get("user_id")
-	phone, _ := c.Get("phone")
-	response.Success(c, http.StatusOK, gin.H{
-		"message": constants.VALID_TOKEN,
-		"user": map[string]interface{}{
-			"user_id": userID,
-			"email":   email,
-			"phone":   phone,
-		},
+	user, err := h.Usecase.GetUserMe(email.(string))
+	if err != nil {
+		response.Error(c, http.StatusBadRequest, err)
+	}
+	userResponse := dto.UserResponse{
+		Fullname:        user.Fullname,
+		Email:           user.Email,
+		PhoneNumber:     user.PhoneNumber,
+		AvatarUrl:       user.AvatarUrl,
+		OnBoarded:       user.OnBoarded,
+		Verified:        user.Verified,
+		CreatedAt:       user.CreatedAt.Format(time.RFC3339),
+		SelectedCompany: user.SelectedCompany,
+	}
+	companyId, err := primitive.ObjectIDFromHex(user.SelectedCompany)
+	if err != nil {
+		response.ErrorFromAppError(c, appErrors.ErrInvalidId)
+		return
+	}
+	company, err := h.CompanyUsecase.FindByID(companyId)
+	if err != nil {
+		response.ErrorFromAppError(c, err)
+		return
+	}
+	companyResponse := dto.CompanyResponse{
+		CompanyID:      company.ID,
+		CompanyName:    company.CompanyName,
+		CompanyEmail:   company.CompanyEmail,
+		CompanyPhone:   company.CompanyPhone,
+		CompanyAddress: company.CompanyAddress,
+		CompanyLogo:    company.CompanyLogo,
+		UserID:         company.UserID,
+		CreatedAt:      company.CreatedAt.Format(time.RFC3339),
+	}
+	response.Success(c, http.StatusOK, dto.UserMeResponse{
+		Message: constants.VALID_TOKEN,
+		User:    userResponse,
+		Company: companyResponse,
 	})
 }
 
@@ -527,4 +558,39 @@ func (h *UserHandler) ChangePasswordWithOldPassword(c *gin.Context) {
 		return
 	}
 	response.PasswordChangeSuccess(c)
+}
+
+// @Summary Set Company ID
+// @Tags Users
+// @Description Change company ID for user
+// @Produce plain
+// @Param company_id path string true "Company ID" example("60d5ec49f1c2b14c88f3c5e5")
+// @Success 200 {object} dto.SuccessResponse
+// @Failure 400 {object} dto.ErrorResponse
+// @Router /api/users/set-company/{company_id} [get]
+func (h *UserHandler) SetCompanyID(c *gin.Context) {
+	companyId := c.Param("company_id")
+	email, _ := c.Get("email")
+	emailStr, ok := email.(string)
+	if !ok {
+		response.Error(c, http.StatusInternalServerError, "Invalid email context")
+		return
+	}
+	user, err := h.Usecase.SetSeletedCompany(emailStr, companyId)
+	if err != nil {
+		response.ErrorFromAppError(c, err)
+		return
+	}
+
+	userResponse := dto.UserResponse{
+		Fullname:        user.Fullname,
+		Email:           user.Email,
+		PhoneNumber:     user.PhoneNumber,
+		AvatarUrl:       user.AvatarUrl,
+		OnBoarded:       user.OnBoarded,
+		Verified:        user.Verified,
+		SelectedCompany: user.SelectedCompany,
+		CreatedAt:       user.CreatedAt.Format(time.RFC3339),
+	}
+	response.UpdateSuccess(c, "User", userResponse)
 }

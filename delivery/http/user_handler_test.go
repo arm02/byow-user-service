@@ -117,7 +117,7 @@ func (m *mockUserUsecase) UpdateUserByPhone(req dto.ChangePhoneRequest, oldPhone
 }
 
 func setupUserHandler() *UserHandler {
-	return NewUserHandler(&usecase.UserUsecase{})
+	return NewUserHandler(&usecase.UserUsecase{}, &usecase.CompanyUsecase{})
 }
 
 func setupUserHandlerWithMock(mockUC *mockUserUsecase) *UserHandler {
@@ -134,7 +134,8 @@ func TestNewUserHandler(t *testing.T) {
 	setupGinTestMode()
 
 	uc := &usecase.UserUsecase{}
-	handler := NewUserHandler(uc)
+	cu := &usecase.CompanyUsecase{}
+	handler := NewUserHandler(uc, cu)
 
 	if handler == nil {
 		t.Fatal("Expected non-nil handler")
@@ -305,12 +306,12 @@ func TestUserHandler_Login_MissingValidationData(t *testing.T) {
 	setupGinTestMode()
 
 	handler := setupUserHandler()
-	
+
 	// Test structure without executing (would panic due to missing dependencies)
 	if handler == nil {
 		t.Fatal("Expected non-nil handler")
 	}
-	
+
 	t.Log("Login handler missing validation data test completed")
 }
 
@@ -318,12 +319,12 @@ func TestUserHandler_Login_InvalidDataTypes(t *testing.T) {
 	setupGinTestMode()
 
 	handler := setupUserHandler()
-	
+
 	// Test structure without executing (would panic due to missing dependencies)
 	if handler == nil {
 		t.Fatal("Expected non-nil handler")
 	}
-	
+
 	t.Log("Login handler invalid data types test completed")
 }
 
@@ -524,12 +525,12 @@ func TestUserHandler_ErrorHandling(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			handler := setupUserHandler()
-			
+
 			// Test structure without executing (would panic due to missing dependencies)
 			if handler == nil {
 				t.Fatal("Expected non-nil handler")
 			}
-			
+
 			t.Logf("Error handling test completed for case: %s", tc.name)
 		})
 	}

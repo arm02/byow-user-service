@@ -111,7 +111,8 @@ var (
 	ErrCloudinaryUploadFailed = &AppError{Code: "CLOUDINARY_UPLOAD_FAILED", Message: "File upload failed", Status: http.StatusInternalServerError}
 
 	// Company
-	ErrCompanyNotFound = &AppError{Code: "NOT_FOUND", Message: "Company not found", Status: http.StatusNotFound}
+	ErrCompanyNotFound       = &AppError{Code: "NOT_FOUND", Message: "Company not found", Status: http.StatusNotFound}
+	ErrUserAlreadySetCompany = &AppError{Code: "FETCH_FAILED", Message: "Commpany ID already set", Status: http.StatusBadRequest}
 )
 
 // Helper function to check if error is of specific type

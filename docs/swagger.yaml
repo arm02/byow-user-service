@@ -161,6 +161,9 @@ definitions:
       phone_number:
         example: "628112123123"
         type: string
+      selected_company:
+        example: id
+        type: string
       token:
         example: token
         type: string
@@ -559,6 +562,30 @@ paths:
           schema:
             $ref: '#/definitions/dto.ErrorResponse'
       summary: Onboarded User
+      tags:
+      - Users
+  /api/users/set-company/{company_id}:
+    get:
+      description: Change company ID for user
+      parameters:
+      - description: Company ID
+        example: '"60d5ec49f1c2b14c88f3c5e5"'
+        in: path
+        name: company_id
+        required: true
+        type: string
+      produces:
+      - text/plain
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: Set Company ID
       tags:
       - Users
   /api/users/update:

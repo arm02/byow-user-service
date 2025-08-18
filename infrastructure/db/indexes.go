@@ -16,7 +16,7 @@ func CreateIndexes(db *mongo.Database, logger *zap.Logger) error {
 	if db == nil {
 		return fmt.Errorf("database is nil")
 	}
-	
+
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
@@ -62,7 +62,7 @@ func CreateIndexes(db *mongo.Database, logger *zap.Logger) error {
 	}
 
 	// Create user indexes
-	userIndexNames, err := userCollection.Indexes().CreateMany(ctx, userIndexes)
+	_, err := userCollection.Indexes().CreateMany(ctx, userIndexes)
 	if err != nil {
 		logger.Error("Failed to create user indexes", zap.Error(err))
 		return err
@@ -124,17 +124,12 @@ func CreateIndexes(db *mongo.Database, logger *zap.Logger) error {
 	}
 
 	// Create company indexes
-	companyIndexNames, err := companyCollection.Indexes().CreateMany(ctx, companyIndexes)
+	_, err = companyCollection.Indexes().CreateMany(ctx, companyIndexes)
 	if err != nil {
 		logger.Error("Failed to create company indexes", zap.Error(err))
 		return err
 	}
 
-	allIndexNames := append(userIndexNames, companyIndexNames...)
-	logger.Info("Database indexes created successfully",
-		zap.Strings("user_indexes", userIndexNames),
-		zap.Strings("company_indexes", companyIndexNames),
-		zap.Int("total_indexes", len(allIndexNames)))
 	return nil
 }
 
@@ -143,7 +138,7 @@ func DropIndexes(db *mongo.Database, logger *zap.Logger) error {
 	if db == nil {
 		return fmt.Errorf("database is nil")
 	}
-	
+
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
@@ -182,7 +177,7 @@ func CheckIndexes(db *mongo.Database, logger *zap.Logger) error {
 	if db == nil {
 		return fmt.Errorf("database is nil")
 	}
-	
+
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
@@ -282,7 +277,7 @@ func RebuildCompanyIndexes(db *mongo.Database, logger *zap.Logger) error {
 	if db == nil {
 		return fmt.Errorf("database is nil")
 	}
-	
+
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 

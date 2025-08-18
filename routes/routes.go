@@ -39,6 +39,7 @@ func InitRoutes(r *gin.Engine, conn *amqp091.Connection, ch *amqp091.Channel) {
 	}
 	database := client.Database(os.Getenv("DB_NAME"))
 	userRepo := repository.NewUserMongoRepo(database, ch)
+	companyRepo := repository.NewCompanyMongoRepo(database)
 
 	// Initialize database indexes
 	if err := db.CreateIndexes(database, logger); err != nil {
@@ -51,8 +52,9 @@ func InitRoutes(r *gin.Engine, conn *amqp091.Connection, ch *amqp091.Channel) {
 
 	// Usecase
 	userUC := &usecase.UserUsecase{
-		Repo:      userRepo,
-		JWTSecret: os.Getenv("JWT_SECRET"),
+		Repo:        userRepo,
+		CompanyRepo: companyRepo,
+		JWTSecret:   os.Getenv("JWT_SECRET"),
 	}
 
 	userUC.JWTExpire, _ = strconv.Atoi(os.Getenv("JWT_EXPIRE"))
@@ -78,7 +80,7 @@ func InitRoutes(r *gin.Engine, conn *amqp091.Connection, ch *amqp091.Channel) {
 	go consumer.ConsumeOTP(msgs)
 
 	companyUC := &usecase.CompanyUsecase{
-		Repo: repository.NewCompanyMongoRepo(database),
+		Repo: companyRepo,
 		UserID: func(c *gin.Context) string {
 			userID, exists := c.Get("user_id")
 			if !exists {
@@ -92,7 +94,7 @@ func InitRoutes(r *gin.Engine, conn *amqp091.Connection, ch *amqp091.Channel) {
 	}
 
 	// Handler
-	userHandler := http.NewUserHandler(userUC)
+	userHandler := http.NewUserHandler(userUC, companyUC)
 	companyHandler := http.NewCompanyHandler(companyUC)
 
 	// Public Routes
@@ -108,7 +110,6 @@ func InitRoutes(r *gin.Engine, conn *amqp091.Connection, ch *amqp091.Channel) {
 		auth.POST("/change-password-otp", userHandler.ChangePasswordWithOTP)
 		auth.GET("/forgot-password/send-otp", userHandler.SendOTPForgotPassword)
 	}
-
 	verification := r.Group("/verification/users")
 	{
 		verification.GET("/send-otp", userHandler.SendOTPVerification)
@@ -118,24 +119,26 @@ func InitRoutes(r *gin.Engine, conn *amqp091.Connection, ch *amqp091.Channel) {
 	// Protected Routes
 	protected := r.Group("/api")
 	protected.Use(jwt.JWTMiddleware(blacklistService))
+	usersPath := protected.Group("/users")
 	{
-		//USER
-		protected.GET("/users/me", userHandler.UserMe)
-		protected.GET("/users/onboard", userHandler.OnBoard)
-		protected.POST("/users/update", userHandler.UpdateUser)
-		protected.POST("/users/logout", userHandler.Logout)
-		protected.POST("/users/change-email", userHandler.ChangeEmail)
-		protected.GET("/users/change-email/send-otp", userHandler.SendOTPEmailChange)
-		protected.POST("/users/change-phone", userHandler.ChangePhone)
-		protected.GET("/users/change-phone/send-otp", userHandler.SendOTPPhoneChange)
-		protected.POST("/users/change-password-old", userHandler.ChangePasswordWithOldPassword)
-
-		//COMPANIES
-		protected.GET("/companies/all", companyHandler.FindAll)
-		protected.POST("/companies/create", companyHandler.Create)
-		protected.GET("/companies/:id", companyHandler.FindByID)
-		protected.PUT("/companies/:id", companyHandler.Update)
-		protected.DELETE("/companies/:id", companyHandler.DeleteById)
+		usersPath.GET("/me", userHandler.UserMe)
+		usersPath.GET("/onboard", userHandler.OnBoard)
+		usersPath.POST("/update", userHandler.UpdateUser)
+		usersPath.POST("/logout", userHandler.Logout)
+		usersPath.POST("/change-email", userHandler.ChangeEmail)
+		usersPath.GET("/change-email/send-otp", userHandler.SendOTPEmailChange)
+		usersPath.POST("/change-phone", userHandler.ChangePhone)
+		usersPath.GET("/change-phone/send-otp", userHandler.SendOTPPhoneChange)
+		usersPath.POST("/change-password-old", userHandler.ChangePasswordWithOldPassword)
+		usersPath.GET("/set-company/:company_id", userHandler.SetCompanyID)
+	}
+	companyPath := protected.Group("/companies")
+	{
+		companyPath.GET("/all", companyHandler.FindAll)
+		companyPath.POST("/create", companyHandler.Create)
+		companyPath.GET("/:id", companyHandler.FindByID)
+		companyPath.PUT("/:id", companyHandler.Update)
+		companyPath.DELETE("/:id", companyHandler.DeleteById)
 	}
 
 	// Health Check

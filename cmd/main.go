@@ -8,6 +8,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"os/signal"
@@ -23,10 +24,18 @@ import (
 // setupServer creates and configures the Gin router
 func setupServer() *gin.Engine {
 	r := gin.Default()
-	conn, ch := rabbitmq.Connect("amqp://guest:guest@localhost:5672/")
+	rabbitURL := fmt.Sprintf(
+		"amqp://%s:%s@%s:%s/",
+		os.Getenv("RABBIT_MQ_USERNAME"),
+		os.Getenv("RABBIT_MQ_PASSWORD"),
+		os.Getenv("RABBIT_MQ_HOST"),
+		os.Getenv("RABBIT_MQ_PORT"),
+	)
+	conn, ch := rabbitmq.Connect(rabbitURL)
 	r.Use(corsService.SetupCors())
 	routes.InitRoutes(r, conn, ch)
-	// Graceful shutdown
+
+	// Graceful shutdown RMQ
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	go func() {

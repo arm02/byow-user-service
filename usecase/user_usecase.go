@@ -16,11 +16,13 @@ import (
 	"github.com/buildyow/byow-user-service/infrastructure/mailer"
 	"github.com/buildyow/byow-user-service/infrastructure/validation"
 	"github.com/buildyow/byow-user-service/utils"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"golang.org/x/crypto/bcrypt"
 )
 
 type UserUsecase struct {
 	Repo        repository.UserRepository
+	CompanyRepo repository.CompanyRepository
 	JWTSecret   string
 	JWTExpire   int
 	EmailConfig struct {
@@ -151,6 +153,10 @@ func (u *UserUsecase) SendOTP(otpType, email string) error {
 }
 
 func (u *UserUsecase) RequestOTP(otpType, email string) error {
+	_, err := u.Repo.FindByEmail(email)
+	if err != nil {
+		return err
+	}
 	msg := map[string]string{
 		"email":   email,
 		"otpType": otpType,
@@ -329,4 +335,37 @@ func (u *UserUsecase) UpdateUserByPhone(req dto.ChangePhoneRequest, oldPhone str
 		return err
 	}
 	return nil
+}
+
+func (u *UserUsecase) SetSeletedCompany(email string, companyId string) (*entity.User, error) {
+	user, err := u.Repo.FindByEmail(email)
+	if err != nil {
+		return nil, appErrors.ErrUserNotFound
+	}
+	if companyId == user.SelectedCompany {
+		return nil, appErrors.ErrUserAlreadySetCompany
+	}
+	companyIdHex, err := primitive.ObjectIDFromHex(companyId)
+	if err != nil {
+		return nil, err
+	}
+	_, err = u.CompanyRepo.FindByIDAndUserID(companyIdHex, user.ID)
+	if err != nil {
+		return nil, appErrors.ErrCompanyNotFound
+
+	}
+	user.SelectedCompany = companyId
+	err = u.Repo.Update(user)
+	if err != nil {
+		return nil, err
+	}
+	return user, nil
+}
+
+func (u *UserUsecase) GetUserMe(email string) (*entity.User, error) {
+	user, err := u.Repo.FindByEmail(email)
+	if err != nil {
+		return nil, appErrors.ErrUserNotFound
+	}
+	return user, nil
 }

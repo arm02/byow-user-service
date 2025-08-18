@@ -154,3 +154,24 @@ func (r *companyMongoRepo) Delete(id primitive.ObjectID) error {
 	_, err := r.collection.DeleteOne(ctx, filter)
 	return err
 }
+
+func (r *companyMongoRepo) FindByIDAndUserID(id primitive.ObjectID, userID string) (*entity.Company, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	filter := bson.M{
+		"_id":     id,
+		"user_id": userID,
+	}
+
+	var company entity.Company
+	err := r.collection.FindOne(ctx, filter).Decode(&company)
+	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			return nil, appErrors.NewNotFoundError("Company")
+		}
+		return nil, err
+	}
+
+	return &company, nil
+}
