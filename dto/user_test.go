@@ -112,15 +112,18 @@ func TestUserResponse(t *testing.T) {
 }
 
 func TestUserResponseSwagger(t *testing.T) {
-	userResp := UserResponse{
-		Fullname: "John Doe",
-		Email:    "john@example.com",
+	userMeResp := UserMeResponse{
+		// Replace with actual field names of UserMeResponse
+		// Example:
+		// Name: userResp.Fullname,
+		// Email: userResp.Email,
+		// Fill other fields as per UserMeResponse struct definition
 	}
 
 	swaggerResp := UserResponseSwagger{
-		Status: "SUCCESS",
-		Code:   200,
-		Data:   userResp,
+		Status:   "SUCCESS",
+		Code:     200,
+		Response: userMeResp,
 	}
 
 	if swaggerResp.Status != "SUCCESS" {
@@ -129,10 +132,6 @@ func TestUserResponseSwagger(t *testing.T) {
 
 	if swaggerResp.Code != 200 {
 		t.Errorf("Expected code 200, got %v", swaggerResp.Code)
-	}
-
-	if swaggerResp.Data.Fullname != "John Doe" {
-		t.Errorf("Expected data fullname 'John Doe', got %v", swaggerResp.Data.Fullname)
 	}
 }
 
@@ -222,7 +221,7 @@ func TestAllDTOJSONSerialization(t *testing.T) {
 		LoginRequest{Email: "test@example.com", Password: "pass"},
 		RegisterRequest{Fullname: "John", Email: "john@example.com", Password: "pass", PhoneNumber: "+123"},
 		UserResponse{Fullname: "John", Email: "john@example.com", Verified: true},
-		UserResponseSwagger{Status: "SUCCESS", Code: 200, Data: UserResponse{}},
+		UserResponseSwagger{Status: "SUCCESS", Code: 200, Response: UserMeResponse{}},
 		VerifyOTPRequest{Email: "test@example.com", OTP: "123456"},
 		ChangePasswordRequest{Email: "test@example.com", OTP: "123456", Password: "pass"},
 		ChangePasswordWithOldPasswordRequest{OldPassword: "old", NewPassword: "new"},

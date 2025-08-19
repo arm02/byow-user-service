@@ -1080,6 +1080,21 @@ const docTemplate = `{
                 }
             }
         },
+        "dto.UserMeResponse": {
+            "type": "object",
+            "properties": {
+                "company": {
+                    "$ref": "#/definitions/dto.CompanyResponse"
+                },
+                "message": {
+                    "type": "string",
+                    "example": "VALID_TOKEN"
+                },
+                "user": {
+                    "$ref": "#/definitions/dto.UserResponse"
+                }
+            }
+        },
         "dto.UserResponse": {
             "type": "object",
             "properties": {
@@ -1128,8 +1143,8 @@ const docTemplate = `{
                     "type": "integer",
                     "example": 200
                 },
-                "data": {
-                    "$ref": "#/definitions/dto.UserResponse"
+                "response": {
+                    "$ref": "#/definitions/dto.UserMeResponse"
                 },
                 "status": {
                     "type": "string",

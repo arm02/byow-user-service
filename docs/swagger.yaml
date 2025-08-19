@@ -141,6 +141,16 @@ definitions:
         example: SUCCESS
         type: string
     type: object
+  dto.UserMeResponse:
+    properties:
+      company:
+        $ref: '#/definitions/dto.CompanyResponse'
+      message:
+        example: VALID_TOKEN
+        type: string
+      user:
+        $ref: '#/definitions/dto.UserResponse'
+    type: object
   dto.UserResponse:
     properties:
       avatar_url:
@@ -176,8 +186,8 @@ definitions:
       code:
         example: 200
         type: integer
-      data:
-        $ref: '#/definitions/dto.UserResponse'
+      response:
+        $ref: '#/definitions/dto.UserMeResponse'
       status:
         example: SUCCESS
         type: string

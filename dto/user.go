@@ -26,9 +26,9 @@ type UserResponse struct {
 }
 
 type UserResponseSwagger struct {
-	Status string       `json:"status" example:"SUCCESS"`
-	Code   int          `json:"code" example:"200"`
-	Data   UserResponse `json:"data"`
+	Status   string         `json:"status" example:"SUCCESS"`
+	Code     int            `json:"code" example:"200"`
+	Response UserMeResponse `json:"response,omitempty"`
 }
 
 type VerifyOTPRequest struct {
@@ -58,7 +58,7 @@ type ChangePhoneRequest struct {
 }
 
 type UserMeResponse struct {
-	Message string      `json:"message"`
-	User    interface{} `json:"user"`
-	Company interface{} `json:"company"`
+	Message string          `json:"message" example:"VALID_TOKEN"`
+	User    UserResponse    `json:"user,omitempty"`
+	Company CompanyResponse `json:"company,omitempty"`
 }

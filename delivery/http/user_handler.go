@@ -127,14 +127,31 @@ func (h *UserHandler) Login(c *gin.Context) {
 	// Set cookie
 	c.SetCookie("token", user.Token, 3600, "/", "", true, true)
 
-	response.Success(c, http.StatusOK, dto.UserResponse{
-		Fullname:    user.Fullname,
-		Email:       user.Email,
-		PhoneNumber: user.PhoneNumber,
-		AvatarUrl:   user.AvatarUrl,
-		Verified:    user.Verified,
-		OnBoarded:   user.OnBoarded,
-		Token:       user.Token,
+	companyId, err := primitive.ObjectIDFromHex(user.SelectedCompany)
+	if err != nil {
+		response.ErrorFromAppError(c, appErrors.ErrInvalidId)
+		return
+	}
+	company, err := h.CompanyUsecase.FindByID(companyId)
+	if err != nil {
+		response.ErrorFromAppError(c, err)
+		return
+	}
+	companyResponse := dto.CompanyResponse{
+		CompanyID:      company.ID,
+		CompanyName:    company.CompanyName,
+		CompanyEmail:   company.CompanyEmail,
+		CompanyPhone:   company.CompanyPhone,
+		CompanyAddress: company.CompanyAddress,
+		CompanyLogo:    company.CompanyLogo,
+		UserID:         company.UserID,
+		CreatedAt:      company.CreatedAt.Format(time.RFC3339),
+	}
+
+	response.Success(c, http.StatusOK, dto.UserMeResponse{
+		Message: constants.SUCCESS,
+		User:    user,
+		Company: companyResponse,
 	})
 }
 

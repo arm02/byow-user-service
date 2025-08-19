@@ -89,13 +89,14 @@ func (u *UserUsecase) Login(email, password string) (dto.UserResponse, error) {
 		return dto.UserResponse{}, err
 	}
 	return dto.UserResponse{
-		Fullname:    user.Fullname,
-		Email:       user.Email,
-		PhoneNumber: user.PhoneNumber,
-		AvatarUrl:   user.AvatarUrl,
-		Verified:    user.Verified,
-		OnBoarded:   user.OnBoarded,
-		Token:       token,
+		Fullname:        user.Fullname,
+		Email:           user.Email,
+		PhoneNumber:     user.PhoneNumber,
+		AvatarUrl:       user.AvatarUrl,
+		Verified:        user.Verified,
+		OnBoarded:       user.OnBoarded,
+		SelectedCompany: user.SelectedCompany,
+		Token:           token,
 	}, nil
 }
 
